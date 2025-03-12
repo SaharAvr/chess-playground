@@ -34,9 +34,9 @@ const PROJECTS = [
   },
 ];
 
-const MotionBox = motion(Box);
-const MotionContainer = motion(Container);
-const MotionTypography = motion(Typography);
+const MotionBox = motion.create(Box);
+const MotionContainer = motion.create(Container);
+const MotionTypography = motion.create(Typography);
 
 // Navigation header component
 function Header() {
