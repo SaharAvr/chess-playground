@@ -17,10 +17,11 @@ import {
 import {
   ArrowBack as ArrowBackIcon,
   Extension as ExtensionIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import { SiReact } from 'react-icons/si';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster } from './projects';
+import { ChessPositionMaster, OpeningTrainer } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -31,6 +32,14 @@ const PROJECTS = [
     component: ChessPositionMaster,
     icon: ExtensionIcon,
     color: '#16A34A',
+  },
+  {
+    id: 'chess-opening-trainer',
+    title: 'Chess Opening Trainer',
+    description: 'Learn and practice chess openings with real-time feedback and statistics',
+    component: OpeningTrainer,
+    icon: SchoolIcon,
+    color: '#2563EB',
   },
 ];
 
