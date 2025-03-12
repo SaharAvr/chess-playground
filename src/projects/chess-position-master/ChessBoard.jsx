@@ -4,7 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { ChessSquare } from './ChessSquare';
 import { ResultOverlay } from './ResultOverlay';
 
-export function ChessBoard({ result, selectedSquare, landingPiece }) {
+export function ChessBoard({ result, selectedSquare, landingPiece, onSquareClick, gameMode }) {
   const squares = [];
   for (let rank = 7; rank >= 0; rank--) {
     for (let file = 0; file < 8; file++) {
@@ -18,6 +18,8 @@ export function ChessBoard({ result, selectedSquare, landingPiece }) {
           result={result}
           selectedSquare={selectedSquare}
           landingPiece={landingPiece}
+          onSquareClick={onSquareClick}
+          gameMode={gameMode}
         />
       );
     }
