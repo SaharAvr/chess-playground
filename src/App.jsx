@@ -18,10 +18,11 @@ import {
   ArrowBack as ArrowBackIcon,
   Extension as ExtensionIcon,
   School as SchoolIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { SiReact } from 'react-icons/si';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster, OpeningTrainer } from './projects';
+import { ChessPositionMaster, OpeningTrainer, ThreatDetector } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -40,6 +41,14 @@ const PROJECTS = [
     component: OpeningTrainer,
     icon: SchoolIcon,
     color: '#2563EB',
+  },
+  {
+    id: 'chess-threat-detector',
+    title: 'Chess Threat Detector',
+    description: 'Test your tactical awareness by identifying pieces under threat in random positions',
+    component: ThreatDetector,
+    icon: SecurityIcon,
+    color: '#DC2626',
   },
 ];
 
