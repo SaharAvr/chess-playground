@@ -1,13 +1,82 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import ChessSquare from './ChessSquare';
 import MoveArrow from './MoveArrow';
+import { Chess } from 'chess.js';
 
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-export default function ChessBoard({ position, onSquareClick, selectedSquare, highlightedMove }) {
-  const pieces = parseFEN(position);
+export default function ChessBoard({ 
+  position, 
+  onMove, 
+  selectedSquare, 
+  highlightedMove
+}) {
+  const [validDropTargets, setValidDropTargets] = useState([]);
+  const [draggedSquare, setDraggedSquare] = useState(null);
+  const chess = new Chess(position);
+
+  const getValidMoves = (square) => {
+    const moves = chess.moves({ square, verbose: true });
+    return moves.map(move => move.to);
+  };
+
+  const handlePieceDragStart = (square) => {
+    console.log('Drag start:', square);
+    setDraggedSquare(square);
+    const validMoves = getValidMoves(square);
+    setValidDropTargets(validMoves);
+  };
+
+  const handlePieceDragEnd = () => {
+    console.log('Drag end');
+    setDraggedSquare(null);
+    setValidDropTargets([]);
+  };
+
+  const handlePieceDrop = (fromSquare, toSquare) => {
+    console.log('Handling piece drop:', { fromSquare, toSquare });
+    try {
+      const move = chess.move({
+        from: fromSquare,
+        to: toSquare,
+        promotion: 'q' // Always promote to queen for simplicity
+      });
+      
+      console.log('Move result:', move);
+      
+      if (move && onMove) {
+        console.log('Calling onMove with:', move);
+        onMove(move);
+      } else {
+        console.log('Move invalid or onMove not provided');
+      }
+    } catch (error) {
+      console.error('Invalid move:', error);
+    } finally {
+      handlePieceDragEnd();
+    }
+  };
+
+  const renderSquare = (square, isLight) => {
+    const piece = chess.get(square);
+    return (
+      <ChessSquare
+        key={square}
+        square={square}
+        piece={piece ? (piece.color === 'w' ? piece.type.toUpperCase() : piece.type.toLowerCase()) : null}
+        isLight={isLight}
+        isSelected={square === selectedSquare}
+        isHighlighted={square === draggedSquare}
+        isValidDropTarget={validDropTargets.includes(square)}
+        onSquareClick={() => onMove && onMove({ from: square, to: square })}
+        onPieceDrop={handlePieceDrop}
+        onDragStart={handlePieceDragStart}
+        onDragEnd={handlePieceDragEnd}
+      />
+    );
+  };
 
   return (
     <Box
@@ -65,20 +134,8 @@ export default function ChessBoard({ position, onSquareClick, selectedSquare, hi
             >
               {FILES.map((file, fileIndex) => {
                 const square = `${file}${rank}`;
-                const piece = pieces[square];
                 const isLight = (rankIndex + fileIndex) % 2 === 0;
-                const isSelected = selectedSquare === square;
-
-                return (
-                  <ChessSquare
-                    key={square}
-                    square={square}
-                    piece={piece}
-                    isLight={isLight}
-                    isSelected={isSelected}
-                    onClick={() => onSquareClick(square)}
-                  />
-                );
+                return renderSquare(square, isLight);
               })}
             </Box>
           ))}
@@ -129,27 +186,3 @@ export default function ChessBoard({ position, onSquareClick, selectedSquare, hi
     </Box>
   );
 }
-
-function parseFEN(fen) {
-  const pieces = {};
-  const [position] = fen.split(' ');
-  const ranks = position.split('/');
-
-  ranks.forEach((rank, rankIndex) => {
-    let fileIndex = 0;
-    
-    for (let i = 0; i < rank.length; i++) {
-      const char = rank[i];
-      
-      if (/\d/.test(char)) {
-        fileIndex += parseInt(char, 10);
-      } else {
-        const square = `${FILES[fileIndex]}${RANKS[rankIndex]}`;
-        pieces[square] = char;
-        fileIndex++;
-      }
-    }
-  });
-
-  return pieces;
-} 

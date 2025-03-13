@@ -115,7 +115,7 @@ export default function useChessGame(onCorrectMove, onIncorrectMove) {
     loadOpeningData([]);
   }, [loadOpeningData]);
 
-  const handleSquareClick = useCallback((square) => {
+  const handleSquareClick = useCallback((moveOrSquare) => {
     const game = gameRef.current;
     
     // Only allow moves on White's turn
@@ -124,6 +124,38 @@ export default function useChessGame(onCorrectMove, onIncorrectMove) {
       return;
     }
 
+    // Handle drag and drop move object
+    if (typeof moveOrSquare === 'object' && moveOrSquare.from && moveOrSquare.to) {
+      try {
+        const result = game.move(moveOrSquare);
+        if (result) {
+          // Play sound based on whether it was a capture
+          playMoveSound(result.captured);
+          
+          setMoves(game.history());
+          setPosition(game.fen());
+
+          // Check if the move is in the opening database
+          if (openingData && openingData.moves.some(m => m.san === result.san)) {
+            onCorrectMove?.(result.san);
+            // Only play Black's move if White's move was correct
+            setTimeout(() => {
+              playBlackMove();
+            }, 500);
+          } else {
+            onIncorrectMove?.(result.san);
+            // Don't play Black's move if White's move was incorrect
+            loadOpeningData(game.history());
+          }
+        }
+      } catch {
+        // Silently handle invalid moves
+      }
+      return;
+    }
+
+    // Handle square click
+    const square = moveOrSquare;
     if (!selectedSquare) {
       setSelectedSquare(square);
       return;

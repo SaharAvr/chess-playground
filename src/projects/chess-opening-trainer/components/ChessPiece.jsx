@@ -1,77 +1,83 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { motion } from 'framer-motion';
+import { 
+  GiChessKing, 
+  GiChessQueen, 
+  GiChessBishop, 
+  GiChessKnight, 
+  GiChessRook, 
+  GiChessPawn 
+} from 'react-icons/gi';
 
-const MotionBox = motion.create(Box);
+const getPieceIcon = (piece) => {
+  if (!piece || typeof piece !== 'string') return null;
+  
+  // Determine color based on the square's rank
+  const isWhite = piece === piece.toUpperCase();
+  const pieceType = piece.toLowerCase();
+  
+  const icons = {
+    'k': GiChessKing,
+    'q': GiChessQueen,
+    'b': GiChessBishop,
+    'n': GiChessKnight,
+    'r': GiChessRook,
+    'p': GiChessPawn
+  };
 
-// SVG-based chess pieces using Material Design Icons
-const PIECE_IMAGES = {
-  p: '♟',
-  n: '♞',
-  b: '♝',
-  r: '♜',
-  q: '♛',
-  k: '♚',
-  P: '♙',
-  N: '♘',
-  B: '♗',
-  R: '♖',
-  Q: '♕',
-  K: '♔'
+  const Icon = icons[pieceType];
+  return Icon ? (
+    <Icon 
+      style={{ 
+        color: isWhite ? '#fff' : '#000',
+        filter: isWhite ? 'drop-shadow(0 0 2px rgba(0,0,0,0.5))' : 'none',
+        fontSize: '220%',
+        transition: 'transform 0.15s ease',
+        transform: 'scale(1.1)',
+        pointerEvents: 'none'
+      }}
+    />
+  ) : null;
 };
 
-export default function ChessPiece({ piece }) {
-  const isWhite = piece === piece.toUpperCase();
+export default function ChessPiece({ piece, isDragging, style, square, onDragStart, onDragEnd }) {
+  const Icon = getPieceIcon(piece);
+  
+  if (!Icon) return null;
+
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/plain', piece);
+    e.dataTransfer.setData('square', square);
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStart?.(square);
+  };
+
+  const handleDragEnd = () => {
+    onDragEnd?.();
+  };
 
   return (
-    <MotionBox
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ 
-        type: 'spring', 
-        stiffness: 400, 
-        damping: 25,
-        mass: 0.5
-      }}
+    <Box
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       sx={{
-        fontSize: { xs: '36px', sm: '42px', md: '48px' },
-        fontFamily: "'Noto Sans', sans-serif",
-        color: isWhite ? '#FFFFFF' : '#000000',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
         height: '100%',
+        cursor: 'grab',
+        '&:active': {
+          cursor: 'grabbing',
+        },
+        transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+        transition: 'transform 0.15s ease',
         userSelect: 'none',
-        cursor: 'pointer',
-        position: 'relative',
-        textShadow: isWhite 
-          ? '0px 1px 1px rgba(0,0,0,0.6), -1px 0px 1px rgba(0,0,0,0.4), 1px 0px 1px rgba(0,0,0,0.4)'
-          : '0px 1px 1px rgba(0,0,0,0.4)',
-        filter: isWhite 
-          ? 'drop-shadow(0px 2px 3px rgba(0,0,0,0.2))'
-          : 'drop-shadow(0px 2px 2px rgba(0,0,0,0.2))',
-        zIndex: 10,
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '65%',
-          height: '65%',
-          background: isWhite 
-            ? 'radial-gradient(circle at 30% 30%, #FFFFFF 30%, #F8F8F8 100%)'
-            : 'none',
-          boxShadow: isWhite 
-            ? 'inset -2px -2px 4px rgba(0,0,0,0.1), 0px 2px 4px rgba(0,0,0,0.2)'
-            : 'none',
-          borderRadius: '50%',
-          zIndex: -1,
-        }
+        ...style
       }}
     >
-      {PIECE_IMAGES[piece]}
-    </MotionBox>
+      {Icon}
+    </Box>
   );
 } 

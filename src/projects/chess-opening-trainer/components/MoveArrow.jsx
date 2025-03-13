@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React from 'react';
 import { Box } from '@mui/material';
 import Xarrow from 'react-xarrows';
 
@@ -37,7 +37,6 @@ const parseFEN = (fen) => {
 };
 
 export default function MoveArrow({ from, to, position }) {
-  const uniqueId = useId();
   const { pieces, turn } = parseFEN(position);
   
   // Only show arrows on white's turn

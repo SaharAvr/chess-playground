@@ -42,7 +42,6 @@ export default function OpeningTrainer() {
 
   const {
     position,
-    moves,
     selectedSquare,
     openingData,
     loading,
@@ -133,7 +132,7 @@ export default function OpeningTrainer() {
           >
             <ChessBoard
               position={position}
-              onSquareClick={handleSquareClick}
+              onMove={handleSquareClick}
               selectedSquare={selectedSquare}
               highlightedMove={highlightedMove}
             />

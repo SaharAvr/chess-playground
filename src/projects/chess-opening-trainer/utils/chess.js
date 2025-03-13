@@ -55,6 +55,76 @@ export const OPENINGS = {
         description: 'The classical approach, putting pressure on Black\'s e5 pawn'
       }
     ]
+  },
+  'queens-gambit': {
+    name: 'Queen\'s Gambit',
+    description: 'A strategic opening that aims to control the center',
+    firstMove: 'd4',
+    response: 'd5',
+    variations: [
+      {
+        name: 'Accepted',
+        moves: ['d4', 'd5', 'c4', 'dxc4'],
+        description: 'Black accepts the gambit pawn, leading to dynamic play'
+      },
+      {
+        name: 'Declined',
+        moves: ['d4', 'd5', 'c4', 'e6'],
+        description: 'Black declines the gambit, maintaining a solid position'
+      }
+    ]
+  },
+  'italian-game': {
+    name: 'Italian Game',
+    description: 'A classical opening focusing on rapid development',
+    firstMove: 'e4',
+    response: 'e5',
+    variations: [
+      {
+        name: 'Main Line',
+        moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5'],
+        description: 'The traditional Italian Game with balanced development'
+      }
+    ]
+  },
+  'french-defense': {
+    name: 'French Defense',
+    description: 'A solid defense that leads to rich strategic positions',
+    firstMove: 'e4',
+    response: 'e6',
+    variations: [
+      {
+        name: 'Main Line',
+        moves: ['e4', 'e6', 'd4', 'd5'],
+        description: 'The classical French Defense with a solid pawn structure'
+      }
+    ]
+  },
+  'caro-kann': {
+    name: 'Caro-Kann Defense',
+    description: 'A solid and reliable defense against 1.e4',
+    firstMove: 'e4',
+    response: 'c6',
+    variations: [
+      {
+        name: 'Main Line',
+        moves: ['e4', 'c6', 'd4', 'd5'],
+        description: 'The traditional Caro-Kann with a solid pawn structure'
+      }
+    ]
+  },
+  'kings-indian': {
+    name: 'King\'s Indian Defense',
+    description: 'A dynamic defense that leads to complex positions',
+    firstMove: 'd4',
+    response: 'Nf6',
+    variations: [
+      {
+        name: 'Main Line',
+        moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7'],
+        description: 'The classical King\'s Indian setup with fianchettoed bishop'
+      }
+    ]
   }
 };
 
