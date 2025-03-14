@@ -27,6 +27,7 @@
     "chessboardjsx": "^2.4.7",
     "framer-motion": "^12.5.0",
     "lodash": "^4.17.21",
+    "pgn-parser": "^2.2.0",
     "react": "^19.0.0",
     "react-chessboard": "^4.7.2",
     "react-dnd": "^16.0.1",

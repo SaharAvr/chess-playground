@@ -2566,6 +2566,11 @@ perfect-freehand@^1.2.2:
   resolved "https://registry.yarnpkg.com/perfect-freehand/-/perfect-freehand-1.2.2.tgz#292f65b72df0c7f57a89c4b346b50d7139014172"
   integrity sha512-eh31l019WICQ03pkF3FSzHxB8n07ItqIQ++G5UV8JX0zVOXzgTGCqnRR0jJ2h9U8/2uW4W4mtGJELt9kEV0CFQ==
 
+pgn-parser@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/pgn-parser/-/pgn-parser-2.2.0.tgz#c3e97536190050e44032cb9ef6d60756875912f5"
+  integrity sha512-cioZtVp+0mzzCwVSxN3RlH0Rr3ds5OyImypr1vAUWs0iUWBnXgUFd8tdup3hGE9ecytiTXzBz1jWabOAkjBG3w==
+
 picocolors@^1.0.0, picocolors@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.1.1.tgz#3d321af3eab939b083c8f929a1d12cda81c26b6b"

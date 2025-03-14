@@ -73,7 +73,7 @@ function Header() {
         borderColor: 'divider',
       }}
     >
-      <Toolbar sx={{ py: 2 }}>
+      <Toolbar>
         <AnimatePresence mode="wait">
           {!isHome && (
             <MotionBox

@@ -1,9 +1,5 @@
 import { Chess } from 'chess.js';
 import axios from 'axios';
-
-const INITIAL_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const LICHESS_API = 'https://explorer.lichess.ovh/masters';
-
 // Generate a random number between min and max (inclusive)
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -22,196 +18,64 @@ export const GAME_PHASES = {
   RANDOM: 'random'
 };
 
-// Get move range for each phase
-const getMoveRange = (phase) => {
-  switch (phase) {
-    case GAME_PHASES.OPENING:
-      return { min: 1, max: 10 };
-    case GAME_PHASES.MIDDLEGAME:
-      return { min: 11, max: 30 };
-    case GAME_PHASES.ENDGAME:
-      return { min: 31, max: 60 };
-    case GAME_PHASES.RANDOM:
-    default:
-      return { min: 1, max: 60 };
-  }
-};
-
-// Fetch a random position from Lichess master games
-const fetchRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
-  try {
-    // Adjust API parameters based on game phase
-    const params = {
-      speeds: ['rapid', 'classical'].join(','),
-      ratings: [2200, 2500].join(','),
-      since: 2000,
-      topGames: 1,
-      recentGames: 1,
-      moves: ''
-    };
-
-    // For opening positions, we want to ensure we get early game positions
-    if (gamePhase === GAME_PHASES.OPENING) {
-      params.moves = '10'; // Get positions after exactly 10 moves
-      params.play = ['e2e4', 'e7e5'].join(','); // Common opening moves to ensure we get real openings
-    }
-    // For middlegame positions, we want complex positions with most pieces
-    else if (gamePhase === GAME_PHASES.MIDDLEGAME) {
-      params.moves = '20'; // Get positions after exactly 20 moves
-    }
-    // For endgame positions, we want positions with fewer pieces
-    else if (gamePhase === GAME_PHASES.ENDGAME) {
-      params.moves = '40'; // Get positions after exactly 40 moves
-    }
-    // For random positions, use any move count
-    else {
-      params.moves = randomInt(10, 40).toString();
-    }
-
-    console.log('Fetching position with params:', params);
-    const response = await axios.get(LICHESS_API, { params });
-    console.log('API Response:', response.data);
-
-    if (response.data?.games?.length > 0) {
-      const game = response.data.games[0];
-      console.log('Selected game:', game);
-      
-      const gameObj = new Chess();
-      
-      // Split moves and play them
-      if (game.moves) {
-        const moves = game.moves.split(' ');
-        console.log('Playing moves:', moves);
-        
-        // Play moves up to our target
-        const targetMoves = parseInt(params.moves);
-        const movesToPlay = Math.min(moves.length, targetMoves);
-        
-        for (let i = 0; i < movesToPlay; i++) {
-          try {
-            gameObj.move(moves[i]);
-          } catch (error) {
-            console.error('Error playing move:', moves[i], error);
-            return createRandomPositionFallback();
-          }
-        }
-      } else {
-        console.error('No moves found in game data');
-        return createRandomPositionFallback();
-      }
-
-      // Get the current position
-      const position = {};
-      for (let i = 0; i < 8; i++) {
-        for (let j = 0; j < 8; j++) {
-          const square = `${String.fromCharCode(97 + j)}${8 - i}`;
-          const piece = gameObj.get(square);
-          if (piece) {
-            position[square] = piece;
-          }
-        }
-      }
-
-      // Count pieces by type and color
-      const pieceCounts = {
-        w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0, total: 0 },
-        b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0, total: 0 }
-      };
-
-      Object.values(position).forEach(piece => {
-        pieceCounts[piece.color][piece.type]++;
-        pieceCounts[piece.color].total++;
-      });
-
-      console.log('Position piece counts:', pieceCounts);
-
-      // Validate position based on game phase
-      const totalPieces = pieceCounts.w.total + pieceCounts.b.total;
-      console.log('Total pieces:', totalPieces);
-      
-      let isValidPosition = false;
-      
-      if (gamePhase === GAME_PHASES.OPENING) {
-        // Opening should have most pieces (24-32)
-        isValidPosition = totalPieces >= 24;
-      } else if (gamePhase === GAME_PHASES.MIDDLEGAME) {
-        // Middlegame should have moderate number of pieces (16-24)
-        isValidPosition = totalPieces >= 16 && totalPieces <= 24;
-      } else if (gamePhase === GAME_PHASES.ENDGAME) {
-        // Endgame should have fewer pieces (8-16)
-        isValidPosition = totalPieces <= 16 && totalPieces >= 8;
-      } else {
-        // Random positions can have any number of pieces
-        isValidPosition = totalPieces >= 8;
-      }
-
-      console.log('Is valid position:', isValidPosition);
-
-      if (isValidPosition) {
-        return position;
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching random position:', error);
-  }
-  
-  console.log('Falling back to random position generation');
-  return createRandomPositionFallback();
-};
-
-// Fallback function to create a random position (original implementation)
-const createRandomPositionFallback = () => {
-  const game = new Chess(INITIAL_POSITION);
-  const pieces = [];
-  const squares = [];
-
-  // Get all pieces and squares
-  for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
-      const square = `${String.fromCharCode(97 + j)}${8 - i}`;
-      const piece = game.get(square);
-      if (piece) {
-        pieces.push(piece);
-        squares.push(square);
-      }
-    }
-  }
-
-  // Randomly place pieces
-  const numPieces = randomInt(8, 16); // Random number of pieces between 8 and 16
-  const selectedPieces = [];
-  const selectedSquares = [];
-
-  // Select random pieces
-  while (selectedPieces.length < numPieces) {
-    const randomIndex = randomInt(0, pieces.length - 1);
-    if (!selectedPieces.includes(pieces[randomIndex])) {
-      selectedPieces.push(pieces[randomIndex]);
-    }
-  }
-
-  // Select random squares
-  while (selectedSquares.length < numPieces) {
-    const randomIndex = randomInt(0, squares.length - 1);
-    if (!selectedSquares.includes(squares[randomIndex])) {
-      selectedSquares.push(squares[randomIndex]);
-    }
-  }
-
-  // Create new position
-  const newPosition = {};
-  selectedPieces.forEach((piece, index) => {
-    newPosition[selectedSquares[index]] = piece;
-  });
-
-  return newPosition;
-};
+// List of notable Lichess players (GMs, IMs, streamers, etc.)
+const LICHESS_PLAYERS = [
+  'Aqua_Blazing',
+  'KonstantinKornienko',
+  'Zhigalko_Sergei',
+  'penguingim1',
+  'Night-King96',
+  'Hripach007',
+  'Mishka_The_Great',
+  'ultraking1',
+  'AngelitoRT',
+  'msb2',
+  'Firephoenix05',
+  'abudabi22840',
+  'dudewithabigflute',
+  'Duhless1981',
+  'Gordima',
+  'merryxmaseverybody',
+  'KontraJaKO',
+  'SavvaVetokhin2009',
+  'Guary1',
+  'Tsoi_Dima',
+  'Kirill_Klyukin',
+  'cjota95',
+  'Kostik_Mostik',
+  'gmbarbosachess',
+  'GutovAndrey',
+  'kaumandur01',
+  'doreality',
+  'Vostanin',
+  'EltajSafarli',
+  'Loin_sn',
+  'Samid2002',
+  'TheRigos',
+  'KILLERBISHOP888',
+  'Never_back_down',
+  'Nikita_Romanovskij',
+  'Olaffo',
+  'pressive',
+  'AndrewHoma',
+  'ElGafas',
+  'herobrin1786',
+  'Mamikon_Gharibyan',
+  'FaustiOro',
+  'ZH1END',
+  'CakeinSpace',
+  'AdriDem',
+  'PumASan',
+  'ChernyukMikhaiL',
+  'Dr-CRO',
+  'gan06',
+  'Chewbacca18'
+]
 
 // Create a random position based on game phase
 const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
-  const game = new Chess(INITIAL_POSITION);
   const position = {};
-  
+
   // Define piece counts for each phase
   let pieceCounts;
   switch (gamePhase) {
@@ -222,7 +86,7 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
         b: { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 }
       };
       break;
-      
+
     case GAME_PHASES.MIDDLEGAME:
       // Middlegame: Moderate number of pieces (20-28)
       pieceCounts = {
@@ -230,7 +94,7 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
         b: { p: randomInt(4, 6), n: randomInt(1, 2), b: randomInt(1, 2), r: randomInt(1, 2), q: randomInt(0, 1), k: 1 }
       };
       break;
-      
+
     case GAME_PHASES.ENDGAME:
       // Endgame: Few pieces (8-16)
       pieceCounts = {
@@ -238,7 +102,7 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
         b: { p: randomInt(2, 4), n: randomInt(0, 1), b: randomInt(0, 1), r: randomInt(0, 1), q: randomInt(0, 1), k: 1 }
       };
       break;
-      
+
     default:
       // Random: Any number of pieces (8-32)
       pieceCounts = {
@@ -251,7 +115,7 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
   const getValidSquares = (piece, gamePhase) => {
     const squares = [];
     const { color, type } = piece;
-    
+
     if (gamePhase === GAME_PHASES.OPENING) {
       // For openings, keep pieces close to their starting positions
       if (type === 'p') {
@@ -319,10 +183,10 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
         for (let j = 0; j < 8; j++) {
           const square = `${String.fromCharCode(97 + j)}${8 - i}`;
           const currentRank = 8 - i;
-          
+
           // Pawns can't be on first or last rank
           if (type === 'p' && (currentRank === 1 || currentRank === 8)) continue;
-          
+
           // Kings can't be adjacent
           if (type === 'k') {
             const isAdjacentToKing = Object.entries(position).some(([sq, p]) => {
@@ -334,19 +198,19 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
             });
             if (isAdjacentToKing) continue;
           }
-          
+
           squares.push(square);
         }
       }
     }
-    
+
     return squares;
   };
 
   // Create arrays of pieces to place
   const pieces = [];
   const colors = ['w', 'b'];
-  
+
   colors.forEach(color => {
     Object.entries(pieceCounts[color]).forEach(([type, count]) => {
       for (let i = 0; i < count; i++) {
@@ -367,129 +231,173 @@ const createRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
   return position;
 };
 
-// Find all White pieces that are under threat
-const findThreatenedPieces = (position, showLogs = false) => {
-  if (showLogs) {
-    console.log('\n=== Starting Threat Detection ===');
-    
-    // Create a visual representation of the board
-    const board = Array(8).fill().map(() => Array(8).fill('.'));
-    Object.entries(position).forEach(([square, piece]) => {
-      const file = square.charCodeAt(0) - 97;
-      const rank = 8 - parseInt(square[1]);
-      board[rank][file] = piece.color === 'w' ? piece.type.toUpperCase() : piece.type.toLowerCase();
-    });
-    
-    console.log('\n=== Board Position ===');
-    console.log('  a b c d e f g h');
-    board.forEach((row, i) => {
-      console.log(`${8 - i} ${row.join(' ')} ${8 - i}`);
-    });
-    console.log('  a b c d e f g h');
-  }
-  
-  // Log complete board state
-  const whitePieces = {};
-  const blackPieces = {};
-  
-  // Sort pieces by color
-  Object.entries(position).forEach(([square, piece]) => {
-    if (piece.color === 'w') {
-      whitePieces[square] = piece;
-    } else {
-      blackPieces[square] = piece;
+const fetchRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
+
+  const isCallingThisFunctionTooOften = (fetchRandomPosition?.cache && (Date.now() - fetchRandomPosition?.cache?.lastCallTime < 1000));
+  if (isCallingThisFunctionTooOften) {
+    const cache = fetchRandomPosition.cache;
+    if (cache?.gamePhase === gamePhase) {
+      if (cache?.position) {
+        return cache.position;
+      } else {
+        const position = await cache.promise;
+        return position;
+      }
     }
-  });
-  
-  if (showLogs) {
-    console.log('\n=== White Pieces ===');
-    Object.entries(whitePieces).forEach(([square, piece]) => {
-      console.log(`${square}: ${piece.type} (${piece.color})`);
-    });
-    
-    console.log('\n=== Black Pieces ===');
-    Object.entries(blackPieces).forEach(([square, piece]) => {
-      console.log(`${square}: ${piece.type} (${piece.color})`);
-    });
   }
-  
-  const threatenedPieces = [];
-  const game = new Chess();
-  
-  // Set up the position
-  Object.entries(position).forEach(([square, piece]) => {
-    game.put(piece, square);
-  });
-  
-  if (showLogs) {
-    console.log('\n=== Game FEN ===');
-    console.log(game.fen());
-  }
-  
-  // Check each White piece
-  Object.entries(whitePieces).forEach(([square, piece]) => {
-    if (showLogs) {
-      console.log(`\n=== Checking White ${piece.type} at ${square} ===`);
-    }
-    
-    // Get all valid moves for each Black piece
-    Object.entries(blackPieces).forEach(([fromSquare, attackingPiece]) => {
-      if (showLogs) {
-        console.log(`\nChecking Black ${attackingPiece.type} at ${fromSquare}`);
-      }
-      
-      // Create a new game instance for each check to avoid state changes
-      const gameCopy = new Chess();
-      Object.entries(position).forEach(([sq, p]) => {
-        gameCopy.put(p, sq);
-      });
-      
-      // Set the turn to Black's turn
-      gameCopy.load(gameCopy.fen().replace('w KQkq', 'b KQkq'));
-      
-      if (showLogs) {
-        console.log(`Getting legal moves for Black ${attackingPiece.type} at ${fromSquare}`);
-        console.log('Current game state:', gameCopy.fen());
-      }
-      
-      const moves = gameCopy.moves({ square: fromSquare, verbose: true });
-      
-      if (showLogs) {
-        console.log(`Number of legal moves found: ${moves.length}`);
-        if (moves.length === 0) {
-          console.log('No legal moves found. This might be because:');
-          console.log('1. The piece is blocked by other pieces');
-          console.log('2. The piece is pinned');
-          console.log('3. The piece is not on the board');
-          console.log('4. The piece is not the correct color for the current turn');
-        } else {
-          console.log('Legal moves:');
-          moves.forEach(move => {
-            console.log(`  ${move.from} -> ${move.to} (${move.piece}${move.captured ? ' captures ' + move.captured : ''})`);
-          });
-        }
-      }
-      
-      // Check if any move can capture the White piece
-      const canCapture = moves.some(move => move.to === square);
-      
-      if (canCapture) {
-        if (showLogs) {
-          console.log(`THREAT FOUND: Black ${attackingPiece.type} at ${fromSquare} can capture White ${piece.type} at ${square}`);
-        }
-        threatenedPieces.push(square);
-      } else if (showLogs) {
-        console.log(`No threat: Black ${attackingPiece.type} at ${fromSquare} cannot capture White ${piece.type} at ${square}`);
-      }
-    });
+
+  fetchRandomPosition.cache = {};
+  fetchRandomPosition.cache.lastCallTime = Date.now();
+  fetchRandomPosition.cache.gamePhase = gamePhase;
+  fetchRandomPosition.cache.promise = new Promise((resolve) => {
+    fetchRandomPosition.cache.resolve = resolve;
   });
 
-  if (showLogs) {
-    console.log('\n=== Final Results ===');
-    console.log('Threatened pieces:', threatenedPieces);
+  try {
+    // Pick a random player from the list
+    const randomPlayer = LICHESS_PLAYERS[Math.floor(Math.random() * LICHESS_PLAYERS.length)];
+
+    // Fetch the player's games (latest games first)
+    const response = await axios.get(`https://lichess.org/api/games/user/${randomPlayer}?max=50&moves=true`);
+
+    // Convert the NDJSON response into an array of game objects
+    const gamesText = await response.data;
+    const games = gamesText.trim().split("\n").map(line => JSON.parse(line));
+
+    if (games.length === 0) {
+      console.warn(`No games found for ${randomPlayer}, trying another player...`);
+      return fetchRandomPosition(gamePhase); // Recursively try another player
+    }
+
+    // Pick a random game
+    const randomGame = games[Math.floor(Math.random() * games.length)];
+
+    // Extract the moves as an array
+    const movesArray = randomGame.moves.split(" ");
+
+    // Create a new chess instance to track the position
+    const game = new Chess();
+
+    // Determine which move to stop at based on game phase
+    let targetMoveIndex;
+    const totalMoves = movesArray.length;
+    let startFromEnd;
+
+    switch (gamePhase) {
+      case GAME_PHASES.OPENING:
+        // First 10-15 moves
+        targetMoveIndex = Math.min(randomInt(10, 15) * 2, totalMoves);
+        break;
+      case GAME_PHASES.MIDDLEGAME:
+        // Moves 15-30
+        targetMoveIndex = Math.min(randomInt(15, 30) * 2, totalMoves);
+        break;
+      case GAME_PHASES.ENDGAME:
+        // Last 15-20 moves
+        startFromEnd = Math.min(randomInt(15, 20) * 2, totalMoves);
+        targetMoveIndex = Math.max(totalMoves - startFromEnd, 0);
+        break;
+      default:
+        // Random position
+        targetMoveIndex = Math.min(randomInt(1, Math.floor(totalMoves / 2)) * 2, totalMoves);
+    }
+
+    // Play moves until target position
+    for (let i = 0; i < targetMoveIndex; i++) {
+      try {
+        game.move(movesArray[i]);
+      } catch {
+        break;
+      }
+    }
+
+    // Convert the position to the same format as createRandomPosition
+    const position = {};
+    const board = game.board();
+
+    for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        const piece = board[i][j];
+        if (piece) {
+          const square = `${String.fromCharCode(97 + j)}${8 - i}`;
+          position[square] = {
+            type: piece.type,
+            color: piece.color
+          };
+        }
+      }
+    }
+
+    fetchRandomPosition.cache.position = position;
+    fetchRandomPosition.cache.resolve(position);
+    return position;
+
+  } catch (error) {
+    console.error("Error fetching games:", error.message);
+    // Fallback to createRandomPosition if fetch fails
+    // return createRandomPosition(gamePhase);
   }
-  
-  return [...new Set(threatenedPieces)]; // Remove duplicates
 };
 
-export { createRandomPosition, findThreatenedPieces }; 
+// Find all White pieces that are under threat
+function findThreatenedPieces(position) {
+  // Step 1: Validate input and log position details
+  if (!position || typeof position !== 'object') {
+    console.error('Invalid position object');
+    return { threatenedPieces: [], threatInfo: {} };
+  }
+
+  // Step 2: Create a new chess instance
+  const game = new Chess();
+
+  // Step 3: Set up the position
+  try {
+    // First, clear the board
+    game.clear();
+
+    // Then place each piece
+    Object.entries(position).forEach(([square, piece]) => {
+      if (!square || !piece || !piece.color || !piece.type) {
+        console.error('Invalid piece data:', { square, piece });
+        return;
+      }
+      game.put(piece, square);
+    });
+
+    // Step 4: Find threatened pieces
+    const threatenedPieces = [];
+    const threatInfo = {};
+
+    // Get all pieces
+    const whitePieces = [];
+    const blackPieces = [];
+
+    Object.entries(position).forEach(([square, piece]) => {
+      if (piece.color === 'w') {
+        whitePieces.push({ square, piece });
+      } else if (piece.color === 'b') {
+        blackPieces.push({ square, piece });
+      }
+    });
+
+    // Check each white piece against each black piece
+    whitePieces.forEach(({ square: whiteSquare, piece: whitePiece }) => {
+      const attackers = game.attackers(whiteSquare, 'b');
+
+      if (attackers.length > 0) {
+        threatenedPieces.push(whiteSquare);
+        threatInfo[whiteSquare] = {
+          piece: whitePiece,
+          attackers
+        };
+      }
+    });
+
+    return { threatenedPieces, threatInfo };
+  } catch (error) {
+    console.error('Error in threat detection:', error);
+    return { threatenedPieces: [], threatInfo: {} };
+  }
+}
+
+export { createRandomPosition, fetchRandomPosition, findThreatenedPieces }; 

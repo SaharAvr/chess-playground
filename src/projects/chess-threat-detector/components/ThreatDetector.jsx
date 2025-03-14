@@ -19,13 +19,14 @@ import {
   Tooltip,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { Settings as SettingsIcon, Visibility as VisibilityIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import ChessBoard from './ChessBoard';
 import Stats from './Stats';
-import { createRandomPosition, findThreatenedPieces, GAME_PHASES } from '../utils/chess';
+import { fetchRandomPosition, findThreatenedPieces, GAME_PHASES } from '../utils/chess';
 
 const MotionPaper = motion.create(Paper);
 const MotionChip = motion.create(Chip);
+const MotionBox = motion.create(Box);
 
 const TIME_OPTIONS = [10, 20, 30];
 
@@ -47,28 +48,152 @@ export default function ThreatDetector() {
   const [showSolution, setShowSolution] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [gamePhase, setGamePhase] = useState(GAME_PHASES.RANDOM);
+  const [learningQueue, setLearningQueue] = useState([]);
+  const [didCloseResultsDialog, setDidCloseResultsDialog] = useState(false);
+  const [didRevealSolution, setDidRevealSolution] = useState(false);
 
   const startNewTurn = useCallback(async () => {
-    console.log('Starting new turn...');
     setIsLoading(true);
     try {
-      const newPosition = await createRandomPosition(gamePhase);
-      console.log('New position created:', newPosition);
+      let newPosition;
+
+      // If there are positions in the learning queue, have a 30% chance to review one
+      if (learningQueue.length > 0 && Math.random() < 0.3) {
+        // Randomly select a position from the learning queue
+        const randomIndex = Math.floor(Math.random() * learningQueue.length);
+        newPosition = learningQueue[randomIndex];
+        // Move the selected position to the front of the queue
+        if (randomIndex !== 0) {
+          setLearningQueue(prev => {
+            const newQueue = [...prev];
+            const [selected] = newQueue.splice(randomIndex, 1);
+            return [selected, ...newQueue];
+          });
+        }
+      } else {
+        newPosition = await fetchRandomPosition(gamePhase);
+      }
+
       setPosition(newPosition);
       setSelectedSquares([]);
       setTimeLeft(timeLimit);
       setIsGameOver(false);
       setShowResults(false);
       setShowSolution(false);
-      const threatened = findThreatenedPieces(newPosition);
-      console.log('Threatened pieces found:', threatened);
-      setThreatenedPieces(threatened);
+      setThreatenedPieces([]);
+      setDidCloseResultsDialog(false);
+      setDidRevealSolution(false);
     } catch (error) {
       console.error('Error starting new turn:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [timeLimit, gamePhase]);
+  }, [timeLimit, gamePhase, learningQueue]);
+
+  const calculateThreatenedPieces = useCallback(() => {
+    if (!position) return;
+    const { threatenedPieces: threatened } = findThreatenedPieces(position);
+    setThreatenedPieces(threatened);
+    return threatened;
+  }, [position]);
+
+  const handleSquareClick = (square) => {
+    if (isGameOver || showSolution) return;
+
+    setSelectedSquares(prev => {
+      if (prev.includes(square)) {
+        return prev.filter(s => s !== square);
+      }
+      return [...prev, square];
+    });
+  };
+
+  const handleContinue = () => {
+    const threatenedPieces = calculateThreatenedPieces();
+    setIsGameOver(true);
+
+    if (didCloseResultsDialog) {
+      handleNextTurn();
+      return;
+    }
+
+    // Check if there are any mistakes
+    const wrong = selectedSquares.some(square => !threatenedPieces.includes(square));
+    const missed = threatenedPieces.some(square => !selectedSquares.includes(square));
+    const correct = !wrong && !missed;
+
+    if (correct) {
+      // Show success animation and start next turn after animation
+      setShowResults(false);
+      // Wait for animation to complete before starting next turn
+      setTimeout(() => {
+        handleNextTurn();
+      }, 1000); // 250ms for fade in + 500ms display + 250ms fade out
+    } else {
+      setShowResults(true);
+    }
+  };
+
+  const handleNextTurn = useCallback(() => {
+    const threatenedPieces = calculateThreatenedPieces();
+  
+    const wrong = selectedSquares.some(square => !threatenedPieces.includes(square));
+    const missed = threatenedPieces.some(square => !selectedSquares.includes(square));
+    const correct = !wrong && !missed;
+
+    // Update stats
+    setStats(prev => ({
+      total: prev.total + 1,
+      correct: prev.correct + (correct ? 1 : 0),
+      wrong: prev.wrong + (wrong ? 1 : 0),
+      missed: prev.missed + (missed ? 1 : 0),
+    }));
+
+    // If the position wasn't solved perfectly
+    if (wrong || missed) {
+      // Keep the current position in the queue if it's not already there
+      if (!learningQueue.includes(position)) {
+        setLearningQueue(prev => [position, ...prev]);
+      }
+      // Reset the current position to try again
+      setShowResults(false);
+      setSelectedSquares([]);
+      setTimeLeft(timeLimit);
+      setIsGameOver(false);
+      setShowSolution(false);
+      return; // Don't proceed to new position
+    }
+
+    // Position was solved correctly
+    if (learningQueue.length > 0 && learningQueue[0] === position) {
+      setLearningQueue(prev => prev.slice(1));
+    }
+
+    // Clear current state before loading new position
+    setPosition(null);
+    setSelectedSquares([]);
+    setThreatenedPieces([]);
+    setShowResults(false);
+    setIsGameOver(false);
+    setShowSolution(false);
+    setTimeLeft(timeLimit);
+  }, [calculateThreatenedPieces, learningQueue, position, selectedSquares, timeLimit]);
+
+  const handleTimeChange = (event) => {
+    const newTime = event.target.value;
+    setTimeLimit(newTime);
+    setTimeLeft(newTime);
+  };
+
+  const handleGamePhaseChange = (event) => {
+    setGamePhase(event.target.value);
+  };
+
+  useEffect(() => {
+    if ((isGameOver || showSolution) && position) {
+      calculateThreatenedPieces();
+    }
+  }, [isGameOver, showSolution, position, calculateThreatenedPieces]);
 
   useEffect(() => {
     if (!position) {
@@ -82,84 +207,60 @@ export default function ThreatDetector() {
       }, 1000);
       return () => clearInterval(timer);
     } else if (timeLeft === 0 && !isGameOver) {
-      setIsGameOver(true);
-      setShowResults(true);
-    }
-  }, [timeLeft, isGameOver, position, startNewTurn, showSolution]);
+      const threatenedPieces = calculateThreatenedPieces();
+      const wrong = selectedSquares.some(square => !threatenedPieces.includes(square));
+      const missed = threatenedPieces.some(square => !selectedSquares.includes(square));
 
-  useEffect(() => {
-    console.log('Game state changed:', {
-      isGameOver,
-      showSolution,
-      showResults,
-      threatenedPieces
-    });
-  }, [isGameOver, showSolution, showResults, threatenedPieces]);
-
-  const handleSquareClick = (square) => {
-    if (isGameOver || showSolution) return;
-    
-    setSelectedSquares(prev => {
-      if (prev.includes(square)) {
-        return prev.filter(s => s !== square);
+      if (wrong || missed) {
+        setShowResults(true);
+      } else {
+        setTimeout(() => {
+          handleNextTurn();
+        }, 1000);
       }
-      return [...prev, square];
-    });
-  };
 
-  const handleContinue = () => {
-    setIsGameOver(true);
-    setShowResults(true);
-  };
-
-  const handleNextTurn = () => {
-    const correct = selectedSquares.filter(square => threatenedPieces.includes(square)).length;
-    const wrong = selectedSquares.filter(square => !threatenedPieces.includes(square)).length;
-    const missed = threatenedPieces.filter(square => !selectedSquares.includes(square)).length;
-
-    setStats(prev => ({
-      total: prev.total + 1,
-      correct: prev.correct + correct,
-      wrong: prev.wrong + wrong,
-      missed: prev.missed + missed,
-    }));
-
-    setShowResults(false);
-    startNewTurn();
-  };
-
-  const handleTimeChange = (event) => {
-    const newTime = event.target.value;
-    setTimeLimit(newTime);
-    setTimeLeft(newTime);
-  };
-
-  const handleGamePhaseChange = (event) => {
-    setGamePhase(event.target.value);
-  };
+      setIsGameOver(true);
+    }
+  }, [timeLeft, isGameOver, position, startNewTurn, showSolution, calculateThreatenedPieces, selectedSquares, handleNextTurn]);
 
   return (
-    <Box 
-      sx={{ 
-        p: { xs: 1, sm: 2 }, 
-        maxWidth: 1400, 
+    <Box
+      sx={{
+        p: { xs: 1, sm: 2 },
+        maxWidth: 1400,
         mx: 'auto',
-        minHeight: '100vh',
-        height: '100vh',
+        height: 'min-content',
+        minHeight: 'calc(100vh - 65px)',
+        maxHeight: 'min-content',
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
-        color: '#fff'
+        color: '#fff',
+        position: 'relative'
       }}
     >
-      <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-        <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Grid container spacing={2} sx={{
+        flex: 1,
+        minHeight: 0,
+        height: 'min-content',
+        zoom: {
+          xs: (() => {
+            const width = window.innerWidth;
+            if (width < 240) return Math.min(0.5, width / 480);
+            if (width < 340) return 0.5;
+            if (width < 600) return Math.min(1, width / 600);
+            return 1;
+          })(),
+          sm: 1
+        }
+      }}>
+        <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 0 }}>
           <MotionPaper
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', duration: 0.5 }}
             sx={{
-              p: 1,
+              p: 0,
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
@@ -167,20 +268,20 @@ export default function ThreatDetector() {
               background: 'rgba(255, 255, 255, 0.05)',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
+              position: 'relative',
             }}
           >
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              mb: 0,
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               p: 0.5,
               background: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 1,
-              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '4px 4px 0 0',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, pl: 1 }}>
                   Find Threatened Pieces
                 </Typography>
                 <AnimatePresence>
@@ -205,29 +306,25 @@ export default function ThreatDetector() {
                 </AnimatePresence>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography 
-                  variant="subtitle1" 
-                  sx={{ 
+                <Typography
+                  variant="subtitle1"
+                  sx={{
                     color: timeLeft <= 3 ? '#ff4444' : '#fff',
-                    fontWeight: 600 
+                    fontWeight: 600
                   }}
                 >
                   Time: {timeLeft}s
                 </Typography>
-                {!isGameOver && !showSolution && (
+                {!showSolution && (
                   <Tooltip title="Reveal solution">
                     <IconButton
                       size="small"
                       onClick={() => {
-                        console.log('Reveal solution button clicked');
-                        console.log('Current threatened pieces:', threatenedPieces);
+                        setDidRevealSolution(true);
                         setShowSolution(true);
                         setIsGameOver(true);
-                        const threatened = findThreatenedPieces(position, true);
-                        setThreatenedPieces(threatened);
-                        console.log('Setting showSolution and isGameOver to true');
                       }}
-                      sx={{ 
+                      sx={{
                         color: 'rgba(255, 255, 255, 0.7)',
                         '&:hover': {
                           color: '#fff',
@@ -249,51 +346,87 @@ export default function ThreatDetector() {
             </Box>
 
             {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, p: 0 }}>
                 <CircularProgress sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
               </Box>
             ) : (
               position && (
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                  <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, mt: -1 }}>
+                <Box sx={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 0,
+                  p: 0,
+                  mt: { xs: 0, sm: 2 },
+                  position: 'relative'
+                }}>
+                  <Box sx={{ 
+                    width: '-webkit-fill-available',
+                    position: 'relative', 
+                    display: 'inline-block',
+                    lineHeight: 0 // Remove any extra space
+                  }}>
                     <ChessBoard
                       position={position}
                       selectedSquares={selectedSquares}
-                      threatenedPieces={showResults || showSolution ? threatenedPieces : []}
+                      threatenedPieces={(showSolution || isGameOver) ? threatenedPieces : []}
                       onSquareClick={handleSquareClick}
                       isGameOver={isGameOver || showSolution}
                     />
+                    {/* Success Animation */}
+                    <AnimatePresence>
+                      {isGameOver && !showResults && !didCloseResultsDialog && !didRevealSolution && (
+                        <MotionBox
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 1.5, opacity: 0 }}
+                          transition={{
+                            duration: 0.25,
+                            opacity: { duration: 0.25 },
+                            scale: { duration: 0.25 },
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            margin: 'auto',
+                            width: 'fit-content',
+                            height: 'fit-content',
+                            zIndex: 1000,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 1,
+                            pointerEvents: 'none',
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            padding: 3,
+                            borderRadius: 2,
+                          }}
+                        >
+                          <CheckCircleIcon sx={{ fontSize: 80, color: '#4caf50' }} />
+                          <Typography variant="h6" sx={{ color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                            Perfect!
+                          </Typography>
+                        </MotionBox>
+                      )}
+                    </AnimatePresence>
                   </Box>
-                  <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    {!isGameOver && !showSolution && (
+                  {showSolution && !threatenedPieces?.length && (
+                    <Box sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
                       <Button
                         variant="contained"
-                        onClick={handleContinue}
                         sx={{
+                          pointerEvents: 'none',
                           backgroundColor: 'rgba(255, 255, 255, 0.1)',
                           '&:hover': {
                             backgroundColor: 'rgba(255, 255, 255, 0.2)',
                           },
                         }}
                       >
-                        Continue
+                        No threatened pieces
                       </Button>
-                    )}
-                    {showSolution && (
-                      <Button
-                        variant="contained"
-                        onClick={startNewTurn}
-                        sx={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                          },
-                        }}
-                      >
-                        Next Position
-                      </Button>
-                    )}
-                  </Box>
+                    </Box>
+                  )}
                 </Box>
               )
             )}
@@ -301,18 +434,35 @@ export default function ThreatDetector() {
         </Grid>
 
         <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Stats stats={stats} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+            <Stats stats={stats} />
+            <Button
+              variant="contained"
+              onClick={handleContinue}
+              sx={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                },
+              }}
+            >
+              Continue
+            </Button>
+          </Box>
         </Grid>
       </Grid>
 
       <Dialog
         open={showResults}
-        onClose={() => setShowResults(false)}
+        onClose={() => {
+          setShowResults(false);
+          setDidCloseResultsDialog(true);
+        }}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle sx={{ color: '#fff' }}>
-          Results
+          Results {learningQueue.length > 0 ? `(${learningQueue.length} positions to practice)` : ''}
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ color: '#fff', mb: 2 }}>
@@ -329,7 +479,7 @@ export default function ThreatDetector() {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={handleNextTurn}
             sx={{
               color: '#fff',
@@ -410,7 +560,7 @@ export default function ThreatDetector() {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={() => setShowSettings(false)}
             sx={{
               color: '#fff',

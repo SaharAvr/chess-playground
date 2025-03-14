@@ -31,7 +31,7 @@ const StatItem = ({ label, value, total, color }) => (
 
 export default function Stats({ stats }) {
   const { total, correct, wrong, missed } = stats;
-
+  
   return (
     <MotionPaper
       initial={{ opacity: 0, x: 20 }}
@@ -58,21 +58,21 @@ export default function Stats({ stats }) {
       <StatItem
         label="Correct"
         value={correct}
-        total={total * 2} // Assuming average 2 threatened pieces per position
+        total={total}
         color="#2196F3"
       />
 
       <StatItem
         label="Wrong"
         value={wrong}
-        total={total * 2}
+        total={total}
         color="#f44336"
       />
 
       <StatItem
         label="Missed"
         value={missed}
-        total={total * 2}
+        total={total}
         color="#FFC107"
       />
 

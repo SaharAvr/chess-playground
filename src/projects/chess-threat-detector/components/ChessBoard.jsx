@@ -25,6 +25,7 @@ export default function ChessBoard({ position, selectedSquares, threatenedPieces
         isThreatened={isThreatened}
         onClick={() => onSquareClick(square)}
         isGameOver={isGameOver}
+        position={position}
       />
     );
   };
