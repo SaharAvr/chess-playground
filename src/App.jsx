@@ -74,44 +74,11 @@ function Header() {
       }}
     >
       <Toolbar>
-        <AnimatePresence mode="wait">
-          {!isHome && (
-            <MotionBox
-              component={motion.div}
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
-            >
-              <IconButton
-                edge="start"
-                component={Link}
-                to="/"
-                sx={{ 
-                  color: 'text.primary',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                  },
-                  transition: 'transform 0.2s',
-                }}
-                aria-label="back"
-              >
-                <ArrowBackIcon />
-              </IconButton>
-            </MotionBox>
-          )}
-        </AnimatePresence>
-        <MotionTypography
+        <Typography
           variant="h5"
-          component={Link}
-          to="/"
-          initial={false}
-          animate={{ 
-            x: isHome ? 0 : 20,
-          }}
           sx={{
-            ml: isHome ? 0 : 2,
+            ml: 0,
             flexGrow: 1,
-            textDecoration: 'none',
             color: '#334155',
             fontWeight: 700,
             letterSpacing: '-0.03em',
@@ -119,28 +86,85 @@ function Header() {
             display: 'flex',
             alignItems: 'center',
             gap: 1.5,
+            overflow: 'hidden',
           }}
         >
-          {isHome ? (
-            <>
-              <Box 
+          <AnimatePresence mode="wait">
+            {!isHome ? (
+              <MotionBox
+                key="project"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
                 sx={{ 
-                  color: '#0EA5E9',
                   display: 'flex',
                   alignItems: 'center',
-                  mt: '-8px',
-                  '& svg': {
-                    width: '2rem',
-                    height: '2rem',
-                  },
+                  gap: 1.5,
                 }}
               >
-                <GiChessKing />
-              </Box>
-              Chess Playground
-            </>
-          ) : currentProject?.title}
-        </MotionTypography>
+                <Box 
+                  sx={{ 
+                    color: 'text.primary',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '& svg': {
+                      width: '1.5rem',
+                      height: '1.5rem',
+                    },
+                  }}
+                >
+                  <IconButton
+                    component={Link}
+                    to="/"
+                    sx={{ 
+                      padding: 0,
+                      color: 'inherit',
+                      '&:hover': {
+                        transform: 'scale(1.1)',
+                      },
+                      transition: 'transform 0.2s',
+                    }}
+                    aria-label="back"
+                  >
+                    <ArrowBackIcon />
+                  </IconButton>
+                </Box>
+                <motion.span>{currentProject?.title}</motion.span>
+              </MotionBox>
+            ) : (
+              <MotionBox
+                key="home"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  cursor: 'default',
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    color: '#0EA5E9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    mt: '-8px',
+                    '& svg': {
+                      width: '2rem',
+                      height: '2rem',
+                    },
+                  }}
+                >
+                  <GiChessKing />
+                </Box>
+                <motion.span>Chess Playground</motion.span>
+              </MotionBox>
+            )}
+          </AnimatePresence>
+        </Typography>
       </Toolbar>
     </AppBar>
   );
