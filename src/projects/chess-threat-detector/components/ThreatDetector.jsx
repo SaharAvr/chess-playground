@@ -286,7 +286,7 @@ export default function ThreatDetector() {
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 0,
-                maxHeight: (lastBoardHeight > 0) ? (lastBoardHeight + 80) : 'min-content',
+                maxHeight: (lastBoardHeight > 0) ? (lastBoardHeight + 96) : 120,
                 background: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(10px)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -381,6 +381,7 @@ export default function ThreatDetector() {
                     minHeight: 0,
                     p: 0,
                     my: { xs: 0, sm: 2 },
+                    mt: { xs: 0, sm: 3 },
                     position: 'relative'
                   }}>
                     <Box sx={{
