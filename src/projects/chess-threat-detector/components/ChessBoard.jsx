@@ -5,7 +5,7 @@ import { getSquareColor } from '../utils/chess';
 
 const BOARD_SIZE = 8;
 
-export default function ChessBoard({ position, selectedSquares, threatenedPieces, onSquareClick, isGameOver }) {
+const ChessBoard = React.forwardRef(({ position, selectedSquares, threatenedPieces, onSquareClick, isGameOver }, ref) => {
   const renderSquare = (i) => {
     const file = i % 8;
     const rank = Math.floor(i / 8);
@@ -32,6 +32,7 @@ export default function ChessBoard({ position, selectedSquares, threatenedPieces
 
   return (
     <Box
+      ref={ref}
       sx={{
         display: 'grid',
         gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
@@ -47,4 +48,6 @@ export default function ChessBoard({ position, selectedSquares, threatenedPieces
       {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => renderSquare(i))}
     </Box>
   );
-} 
+});
+
+export default ChessBoard;
