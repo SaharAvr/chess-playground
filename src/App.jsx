@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -145,7 +145,7 @@ function Header() {
               >
                 <SiReact />
               </Box>
-              React Playground
+              Chess Playground
             </>
           ) : currentProject?.title}
         </MotionTypography>
@@ -345,7 +345,7 @@ function ProjectList() {
             lineHeight: 1.6,
           }}
         >
-          A collection of React components and applications
+          A collection of interactive chess training applications
         </Typography>
       </Box>
       <Grid container spacing={6}>

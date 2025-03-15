@@ -1,9 +1,9 @@
 {
-  "name": "react-playground",
+  "name": "chess-playground",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://saharavr.github.io/react-playground",
+  "homepage": "https://saharavr.github.io/chess-playground",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

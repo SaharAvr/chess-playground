@@ -1,12 +1,35 @@
-# React + Vite
+# Chess Playground
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A collection of interactive chess training applications built with React. Visit the [live demo](https://saharavr.github.io/chess-playground/).
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+To run this project locally:
 
-## Expanding the ESLint configuration
+```bash
+# Clone the repository
+git clone https://github.com/SaharAvr/chess-playground.git
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+# Navigate to the project directory
+cd chess-playground
+
+# Install dependencies
+yarn install
+
+# Start the development server
+yarn dev
+```
+
+The application will be available at `http://localhost:5173/chess-playground/`
+
+## Deployment
+
+The project is automatically deployed to GitHub Pages when changes are pushed to the main branch. To deploy manually:
+
+```bash
+yarn deploy
+```
+
+## License
+
+MIT License - feel free to use this code for your own projects!
