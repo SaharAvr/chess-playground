@@ -20,7 +20,7 @@ import {
   School as SchoolIcon,
   Security as SecurityIcon,
 } from '@mui/icons-material';
-import { SiReact } from 'react-icons/si';
+import { GiChessKing } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChessPositionMaster, OpeningTrainer, ThreatDetector } from './projects';
 
@@ -125,25 +125,17 @@ function Header() {
             <>
               <Box 
                 sx={{ 
-                  color: '#61DAFB',
+                  color: '#0EA5E9',
                   display: 'flex',
                   alignItems: 'center',
+                  mt: '-8px',
                   '& svg': {
-                    width: '1.5rem',
-                    height: '1.5rem',
-                    animation: 'spin 20s linear infinite',
-                  },
-                  '@keyframes spin': {
-                    from: {
-                      transform: 'rotate(0deg)',
-                    },
-                    to: {
-                      transform: 'rotate(360deg)',
-                    },
+                    width: '2rem',
+                    height: '2rem',
                   },
                 }}
               >
-                <SiReact />
+                <GiChessKing />
               </Box>
               Chess Playground
             </>
