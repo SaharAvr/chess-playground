@@ -19,10 +19,11 @@ import {
   Extension as ExtensionIcon,
   School as SchoolIcon,
   Security as SecurityIcon,
+  Lightbulb as LightbulbIcon,
 } from '@mui/icons-material';
 import { GiChessKing } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster, OpeningTrainer, ThreatDetector } from './projects';
+import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -49,6 +50,14 @@ const PROJECTS = [
     component: ThreatDetector,
     icon: SecurityIcon,
     color: '#DC2626',
+  },
+  {
+    id: 'chess-tactics-finder',
+    title: 'Chess Tactics Finder',
+    description: 'Analyze positions in real-time to discover tactical opportunities and winning moves',
+    component: TacticsFinder,
+    icon: LightbulbIcon,
+    color: '#9333EA',
   },
 ];
 
