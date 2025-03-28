@@ -149,7 +149,7 @@ const ChessTacticsFinder = () => {
         }))?.data;
 
         if (whiteAnalysis.error) {
-          throw new Error(blackAnalyses.text)
+          throw new Error(whiteAnalysis.text)
         }
 
         whiteAnalyses[i] = whiteAnalysis;
