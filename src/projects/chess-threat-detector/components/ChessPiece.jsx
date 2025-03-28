@@ -1,13 +1,9 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import Piece from 'react-chess-pieces';
 
 const MotionBox = motion.create(Box);
-
-const PIECES = {
-  'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙',
-  'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟'
-};
 
 const scaredAnimation = {
   initial: { scale: 1, rotate: 0 },
@@ -20,10 +16,10 @@ const scaredAnimation = {
   ]
 };
 
-export default function ChessPiece({ piece, square, isGameOver }) {
+export default function ChessPiece({ piece, isGameOver }) {
   // piece is an object with { type, color } from chess.js
   const isWhite = piece.color === 'w';
-  const pieceSymbol = PIECES[piece.type.toUpperCase()];
+  const pieceSymbol = isWhite ? piece.type.toUpperCase() : piece.type.toLowerCase();
 
   return (
     <MotionBox
@@ -32,14 +28,13 @@ export default function ChessPiece({ piece, square, isGameOver }) {
       transition={{ type: 'spring', duration: 0.3 }}
       variants={isWhite && !isGameOver ? scaredAnimation : undefined}
       sx={{
-        fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
-        color: isWhite ? '#fff' : '#000',
-        textShadow: isWhite ? '0 0 2px #000' : '0 0 2px #fff',
+        width: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+        height: { xs: '2rem', sm: '2.5rem', md: '3rem' },
         userSelect: 'none',
         pointerEvents: 'none',
       }}
     >
-      {pieceSymbol}
+      <Piece piece={pieceSymbol} />
     </MotionBox>
   );
 } 

@@ -26,6 +26,7 @@ const ChessBoard = React.forwardRef(({ position, selectedSquares, threatenedPiec
         onClick={() => onSquareClick(square)}
         isGameOver={isGameOver}
         position={position}
+        threatenedPieces={threatenedPieces}
       />
     );
   };
