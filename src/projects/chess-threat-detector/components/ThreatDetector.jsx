@@ -459,19 +459,24 @@ export default function ThreatDetector() {
 
           <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
-              <Stats stats={stats} />
-              <Button
-                variant="contained"
-                onClick={handleContinue}
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                }}
-              >
-                Continue
-              </Button>
+              <Box sx={{ order: { xs: 2, md: 1 } }}>
+                <Stats stats={stats} />
+              </Box>
+              <Box sx={{ order: { xs: 1, md: 2 } }}>
+                <Button
+                  variant="contained"
+                  onClick={handleContinue}
+                  sx={{
+                    width: '100%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    },
+                  }}
+                >
+                  Continue
+                </Button>
+              </Box>
             </Box>
           </Grid>
         </Grid>
