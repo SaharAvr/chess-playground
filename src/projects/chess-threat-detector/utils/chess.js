@@ -260,6 +260,12 @@ const fetchRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
     // Fetch the player's games (latest games first)
     const response = await axios.get(`https://lichess.org/api/games/user/${randomPlayer}?max=50&moves=true`);
 
+    // Check if response is empty or has no games
+    if (!response.data || response.data.trim() === '') {
+      console.warn(`No games found for ${randomPlayer}, trying another player...`);
+      return fetchRandomPosition(gamePhase);
+    }
+
     // Convert the NDJSON response into an array of game objects
     const gamesText = await response.data;
     const games = gamesText.trim().split("\n").map(line => JSON.parse(line));
@@ -334,8 +340,11 @@ const fetchRandomPosition = async (gamePhase = GAME_PHASES.RANDOM) => {
 
   } catch (error) {
     console.error("Error fetching games:", error.message);
-    // Fallback to createRandomPosition if fetch fails
-    // return createRandomPosition(gamePhase);
+    // Handle 404 errors or any other errors by trying a different user
+    if (error.response?.status === 404) {
+      console.warn(`User not found or no games available, trying another player...`);
+    }
+    return fetchRandomPosition(gamePhase);
   }
 };
 
