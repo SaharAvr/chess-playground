@@ -1,0 +1,1 @@
+export { ChessMovePredictor } from './src/components/ChessMovePredictor'; 

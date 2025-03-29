@@ -20,10 +20,11 @@ import {
   School as SchoolIcon,
   Security as SecurityIcon,
   Lightbulb as LightbulbIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { GiChessKing } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder } from './projects';
+import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder, ChessMovePredictor } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -58,6 +59,14 @@ const PROJECTS = [
     component: TacticsFinder,
     icon: LightbulbIcon,
     color: '#9333EA',
+  },
+  {
+    id: 'chess-move-predictor',
+    title: 'Chess Move Predictor',
+    description: 'Predict opponent moves and score points based on move probability in multiple scenarios',
+    component: ChessMovePredictor,
+    icon: PsychologyIcon,
+    color: '#0EA5E9',
   },
 ];
 
