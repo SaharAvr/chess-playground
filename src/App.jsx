@@ -21,10 +21,11 @@ import {
   Security as SecurityIcon,
   Lightbulb as LightbulbIcon,
   Psychology as PsychologyIcon,
+  AutoGraph as AutoGraphIcon,
 } from '@mui/icons-material';
 import { GiChessKing } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder, ChessMovePredictor } from './projects';
+import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder, ChessMovePredictor, ChessTacticsFinder2 } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -59,6 +60,14 @@ const PROJECTS = [
     component: TacticsFinder,
     icon: LightbulbIcon,
     color: '#9333EA',
+  },
+  {
+    id: 'chess-tactics-finder-2',
+    title: 'Chess Tactics Finder 2',
+    description: 'Advanced tactical analysis with forced move sequences and position evaluation',
+    component: ChessTacticsFinder2,
+    icon: AutoGraphIcon,
+    color: '#EAB308',
   },
   {
     id: 'chess-move-predictor',
