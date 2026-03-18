@@ -314,19 +314,14 @@ export default function BestMoveTrainer() {
   // We use pointer down on the container to get an IMMEDIATE highlight when parsing.
   const handlePointerDown = useCallback((e) => {
     if (!game || status !== 'playing') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
     
-    // Chessboard is 440px, meaning 8 squares.
-    const colIndex = Math.floor((x / rect.width) * 8);
-    const rowIndex = Math.floor((y / rect.height) * 8);
-    if (colIndex < 0 || colIndex > 7 || rowIndex < 0 || rowIndex > 7) return;
+    // Instead of doing bounding box math which can be thrown off by browser scaling
+    // or borders, we just ask the DOM what square react-chessboard rendered here:
+    const squareEl = e.target.closest('[data-square]');
+    if (!squareEl) return;
     
-    const isW = position?.orientation !== 'black';
-    const file = ['a','b','c','d','e','f','g','h'][isW ? colIndex : 7 - colIndex];
-    const rank = ['8','7','6','5','4','3','2','1'][isW ? rowIndex : 7 - rowIndex];
-    const square = file + rank;
+    const square = squareEl.getAttribute('data-square');
+    if (!square) return;
     
     const playerColor = position?.orientation === 'white' ? 'w' : 'b';
     const piece = game.get(square);
