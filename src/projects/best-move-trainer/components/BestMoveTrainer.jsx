@@ -432,7 +432,13 @@ export default function BestMoveTrainer() {
       setCorrectSquares({});
       setFeedback({ type: 'retry', attempts: wrongAttempts + 1 });
       setWrongAttempts(w => w + 1);
-      recordFailure(position); // track per-position failure
+
+      if (!sessionRecorded) {
+        recordResult(false);
+        recordFailure(position); // track per-position failure only once per session
+        setSessionRecorded(true);
+      }
+      
       setTimeout(() => {
         setWrongSquares({});
         // Keep feedback as 'retry' so they can see attempt count
@@ -527,9 +533,13 @@ export default function BestMoveTrainer() {
     if (best) setArrows([[best.slice(0, 2), best.slice(2, 4), '#EF4444']]);
     setFeedback({ type: 'revealed', best: position.bestMoveSan });
     setStatus('revealed'); clearSelection();
+    
     // Record this position attempt as a loss if not yet recorded
-    if (!sessionRecorded) { recordResult(false); setSessionRecorded(true); }
-    recordFailure(position);
+    if (!sessionRecorded) { 
+      recordResult(false); 
+      recordFailure(position);
+      setSessionRecorded(true); 
+    }
   }, [position, sessionRecorded, recordResult, recordFailure, clearSelection]);
 
   // ── Ask AI ────────────────────────────────────────────────────────────────
