@@ -268,6 +268,29 @@ export default function BestMoveTrainer() {
 
   useEffect(() => { loadNewPosition(mode); }, []); // eslint-disable-line
 
+  // Handle mobile back button for Settings Modal
+  useEffect(() => {
+    let unmountedViaPopState = false;
+    const handlePopState = () => {
+      unmountedViaPopState = true;
+      setShowSettings(false);
+    };
+
+    if (showSettings) {
+      window.history.pushState({ settingsModal: true }, '');
+      window.addEventListener('popstate', handlePopState);
+    }
+
+    return () => {
+      if (showSettings) {
+        window.removeEventListener('popstate', handlePopState);
+        if (!unmountedViaPopState) {
+          window.history.back();
+        }
+      }
+    };
+  }, [showSettings]);
+
   // ── Overall stats ─────────────────────────────────────────────────────────
   const recordResult = useCallback((correct) => {
     setStats(prev => {
