@@ -207,8 +207,12 @@ export default function BestMoveTrainer() {
   };
 
   const initialFenRef = React.useRef(true);
+  const isFetchingRef = React.useRef(false);
 
   const loadNewPosition = useCallback(async (currentMode) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     const m = currentMode ?? mode;
     setStatus('loading');
     setPosition(null);
@@ -228,7 +232,12 @@ export default function BestMoveTrainer() {
       } else if (m === 'practice') {
         const fl = loadFailures();
         const sorted = sortedFailures(fl);
-        if (!sorted.length) { setMode('normal'); setStatus('loading'); return loadNewPosition('normal'); }
+        if (!sorted.length) { 
+          setMode('normal'); 
+          setStatus('loading'); 
+          isFetchingRef.current = false;
+          return loadNewPosition('normal'); 
+        }
         // Pick from top 3 hardest (add slight randomness)
         const topN = Math.min(3, sorted.length);
         const picked = sorted[Math.floor(Math.random() * topN)];
@@ -263,6 +272,8 @@ export default function BestMoveTrainer() {
         const fenParam = p.fen.replace(/ /g, '_');
         window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}`);
       } catch (_) { setStatus('loading'); }
+    } finally {
+      isFetchingRef.current = false;
     }
   }, [mode]); // eslint-disable-line
 
