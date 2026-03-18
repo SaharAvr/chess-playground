@@ -31,7 +31,7 @@ import StatsPanel from './StatsPanel';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 // ─── Gemini Explanation ───────────────────────────────────────────────────────
-async function fetchMoveExplanation(fen, bestMoveSan) {
+async function fetchMoveExplanation(fen, bestMoveSan, pv = '') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('gemini_api_key');
   if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.trim() === '') return null;
 
@@ -39,7 +39,7 @@ async function fetchMoveExplanation(fen, bestMoveSan) {
     const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       contents: [{
         role: 'user',
-        parts: [{ text: `You are an expert chess coach. Explain briefly and clearly (in 1 or 2 beginner-friendly sentences) why the move "${bestMoveSan}" is the best move in this chess position (FEN: ${fen}). Do not mention the FEN string in your response, just explain the strategy or tactics.` }]
+        parts: [{ text: `You are an expert chess coach. Explain briefly and clearly (in 1 or 2 beginner-friendly sentences) why the move "${bestMoveSan}" is the best move in this chess position (FEN: ${fen}). ${pv ? `The expected continuation sequence is: ${pv}. ` : ''}Do not mention the FEN string in your response, just explain the strategy or tactics.` }]
       }]
     });
     return res.data.candidates[0].content.parts[0].text;
@@ -131,11 +131,15 @@ async function fetchPositionAnalysis(fen, lichessGame = null) {
     username = `${white} vs ${black}`;
   }
 
+  const bestData = Array.isArray(analysis.data) ? analysis.data[0] : analysis.data;
+  const pv = bestData?.continuationArr ? bestData.continuationArr.join(' ') : '';
+
   return {
     fen, orientation, topMoves,
-    bestMoveSan: analysis.data.san || analysis.data.text || topMoves[0],
-    evalScore: analysis.data.eval,
-    username
+    bestMoveSan: bestData?.san || bestData?.text || topMoves[0],
+    evalScore: bestData?.eval,
+    username,
+    pv
   };
 }
 
@@ -248,6 +252,7 @@ export default function BestMoveTrainer() {
           bestMoveSan: picked.bestMoveSan,
           evalScore: picked.evalScore,
           username: picked.username,
+          pv: picked.pv,
           practiceStats: { fails: picked.fails, successes: picked.successes },
           explanation: picked.explanation,
         };
@@ -331,6 +336,7 @@ export default function BestMoveTrainer() {
         fen: pos.fen, orientation: pos.orientation,
         bestMove: pos.topMoves[0], bestMoveSan: pos.bestMoveSan,
         evalScore: pos.evalScore, username: pos.username,
+        pv: pos.pv,
         fails: 0, successes: 0, addedAt: todayKey(),
       };
       const updated = { ...prev, [key]: { ...existing, fails: existing.fails + 1, lastAttempted: new Date().toISOString() } };
@@ -522,7 +528,7 @@ export default function BestMoveTrainer() {
     }
     setExplainingStatus('loading');
     const san = status === 'correct' ? feedback?.san : position.bestMoveSan;
-    fetchMoveExplanation(position.fen, san).then(exp => {
+    fetchMoveExplanation(position.fen, san, position.pv).then(exp => {
       setExplanation(exp);
       setExplainingStatus('done');
       updateFailureExplanation(position, exp);
