@@ -20,10 +20,11 @@ import {
   School as SchoolIcon,
   Security as SecurityIcon,
   Lightbulb as LightbulbIcon,
+  EmojiEvents as EmojiEventsIcon,
 } from '@mui/icons-material';
 import { GiChessKing } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder } from './projects';
+import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder, BestMoveTrainer } from './projects';
 
 // Project definitions with enhanced metadata
 const PROJECTS = [
@@ -58,6 +59,14 @@ const PROJECTS = [
     component: TacticsFinder,
     icon: LightbulbIcon,
     color: '#9333EA',
+  },
+  {
+    id: 'chess-best-move-trainer',
+    title: 'Best Move Trainer',
+    description: 'Get random puzzles from Lichess and find the best move. Track your accuracy and watch your performance improve over time.',
+    component: BestMoveTrainer,
+    icon: EmojiEventsIcon,
+    color: '#7C3AED',
   },
 ];
 
