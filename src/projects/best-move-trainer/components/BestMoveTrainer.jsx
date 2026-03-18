@@ -3,56 +3,56 @@ import {
   Box, Typography, IconButton, Tooltip, Chip,
   Divider, CircularProgress, Badge,
 } from '@mui/material';
-import RefreshIcon      from '@mui/icons-material/Refresh';
-import EmojiEventsIcon  from '@mui/icons-material/EmojiEvents';
-import TrendingUpIcon   from '@mui/icons-material/TrendingUp';
-import LightbulbIcon    from '@mui/icons-material/Lightbulb';
-import CheckCircleIcon  from '@mui/icons-material/CheckCircle';
-import CancelIcon       from '@mui/icons-material/Cancel';
-import SkipNextIcon     from '@mui/icons-material/SkipNext';
-import BarChartIcon     from '@mui/icons-material/BarChart';
-import SchoolIcon       from '@mui/icons-material/School';
-import FlashOnIcon      from '@mui/icons-material/FlashOn';
-import { Chess }        from 'chess.js';
-import { Chessboard }   from 'react-chessboard';
-import axios            from 'axios';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import SchoolIcon from '@mui/icons-material/School';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import { Chess } from 'chess.js';
+import { Chessboard } from 'react-chessboard';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import useSound         from 'use-sound';
-import moveSound    from '../../chess-tactics-finder/sounds/move.mp3';
-import captureSound from '../../chess-tactics-finder/sounds/capture.mp3';
-import StatsPanel   from './StatsPanel';
+import useSound from 'use-sound';
+import moveSound from '../../tactics-finder/sounds/move.mp3';
+import captureSound from '../../tactics-finder/sounds/capture.mp3';
+import StatsPanel from './StatsPanel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const STORAGE_KEY  = 'chess_best_move_trainer_stats';
+const STORAGE_KEY = 'chess_best_move_trainer_stats';
 const FAILURES_KEY = 'chess_best_move_failures';
-const THEME_COLOR  = '#7C3AED';
+const THEME_COLOR = '#7C3AED';
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 const LIGHT = {
-  bg:            'linear-gradient(180deg, #fffef1 0%, #ffffff 55%)',
-  textPrimary:   '#0F172A',  textSecondary: '#64748B',  textTertiary: '#94A3B8',
-  iconColor:     '#64748B',  iconBorder:    'rgba(0,0,0,0.12)',
-  boardShadow:   '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
-  boardBorder:   'rgba(0,0,0,0.07)',  loadingBg: 'linear-gradient(135deg, #f8f4ee, #f5f0e8)',
-  cardBg:        '#ffffff',   cardBorder:   'rgba(0,0,0,0.07)', divider: 'rgba(0,0,0,0.07)',
-  playBg:        '#ffffff',   playBorder:   'rgba(124,58,237,0.15)', playTitle: '#1E1B4B', playSub: '#64748B',
-  correctBg:     '#f0fdf4',   correctBorder:'#bbf7d0',  correctTitle: '#15803D', correctSub: '#166534',
-  wrongBg:       '#fef2f2',   wrongBorder:  '#fecaca',  wrongTitle:   '#991B1B', wrongSub:   '#B91C1C',
-  retryBg:       '#fffbeb',   retryBorder:  '#fde68a',  retryTitle:   '#92400E', retrySub:   '#B45309',
+  bg: 'linear-gradient(180deg, #fffef1 0%, #ffffff 55%)',
+  textPrimary: '#0F172A', textSecondary: '#64748B', textTertiary: '#94A3B8',
+  iconColor: '#64748B', iconBorder: 'rgba(0,0,0,0.12)',
+  boardShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+  boardBorder: 'rgba(0,0,0,0.07)', loadingBg: 'linear-gradient(135deg, #f8f4ee, #f5f0e8)',
+  cardBg: '#ffffff', cardBorder: 'rgba(0,0,0,0.07)', divider: 'rgba(0,0,0,0.07)',
+  playBg: '#ffffff', playBorder: 'rgba(124,58,237,0.15)', playTitle: '#1E1B4B', playSub: '#64748B',
+  correctBg: '#f0fdf4', correctBorder: '#bbf7d0', correctTitle: '#15803D', correctSub: '#166534',
+  wrongBg: '#fef2f2', wrongBorder: '#fecaca', wrongTitle: '#991B1B', wrongSub: '#B91C1C',
+  retryBg: '#fffbeb', retryBorder: '#fde68a', retryTitle: '#92400E', retrySub: '#B45309',
 };
 const DARK = {
-  bg:            'linear-gradient(135deg, #0F0720 0%, #1A0938 40%, #0D1B2A 100%)',
-  textPrimary:   '#F1F5F9',  textSecondary: '#94A3B8',  textTertiary: '#64748B',
-  iconColor:     '#94A3B8',  iconBorder:    'rgba(255,255,255,0.1)',
-  boardShadow:   '0 0 60px rgba(124,58,237,0.25), 0 20px 60px rgba(0,0,0,0.5)',
-  boardBorder:   'rgba(255,255,255,0.08)', loadingBg: 'rgba(15,7,32,0.9)',
-  cardBg:        'rgba(255,255,255,0.04)', cardBorder:'rgba(255,255,255,0.09)', divider: 'rgba(255,255,255,0.07)',
-  playBg:        'rgba(124,58,237,0.08)', playBorder:'rgba(124,58,237,0.2)',  playTitle: '#C4B5FD', playSub: '#7C6FA6',
-  correctBg:     'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))',
-  correctBorder: 'rgba(34,197,94,0.3)',   correctTitle: '#86EFAC', correctSub: '#4ADE80',
-  wrongBg:       'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))',
-  wrongBorder:   'rgba(239,68,68,0.3)',   wrongTitle:   '#FCA5A5', wrongSub:   '#FCA5A5',
-  retryBg:       'rgba(251,191,36,0.1)',  retryBorder:  'rgba(251,191,36,0.3)', retryTitle: '#FCD34D', retrySub: '#FDE68A',
+  bg: 'linear-gradient(135deg, #0F0720 0%, #1A0938 40%, #0D1B2A 100%)',
+  textPrimary: '#F1F5F9', textSecondary: '#94A3B8', textTertiary: '#64748B',
+  iconColor: '#94A3B8', iconBorder: 'rgba(255,255,255,0.1)',
+  boardShadow: '0 0 60px rgba(124,58,237,0.25), 0 20px 60px rgba(0,0,0,0.5)',
+  boardBorder: 'rgba(255,255,255,0.08)', loadingBg: 'rgba(15,7,32,0.9)',
+  cardBg: 'rgba(255,255,255,0.04)', cardBorder: 'rgba(255,255,255,0.09)', divider: 'rgba(255,255,255,0.07)',
+  playBg: 'rgba(124,58,237,0.08)', playBorder: 'rgba(124,58,237,0.2)', playTitle: '#C4B5FD', playSub: '#7C6FA6',
+  correctBg: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))',
+  correctBorder: 'rgba(34,197,94,0.3)', correctTitle: '#86EFAC', correctSub: '#4ADE80',
+  wrongBg: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))',
+  wrongBorder: 'rgba(239,68,68,0.3)', wrongTitle: '#FCA5A5', wrongSub: '#FCA5A5',
+  retryBg: 'rgba(251,191,36,0.1)', retryBorder: 'rgba(251,191,36,0.3)', retryTitle: '#FCD34D', retrySub: '#FDE68A',
 };
 
 // ─── Stats helpers ────────────────────────────────────────────────────────────
@@ -64,8 +64,8 @@ const loadStats = () => {
   try { const r = localStorage.getItem(STORAGE_KEY); return r ? { ...initStats(), ...JSON.parse(r) } : initStats(); }
   catch (_) { return initStats(); }
 };
-const saveStats = s => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (_) {} };
-const todayKey  = () => new Date().toISOString().slice(0, 10);
+const saveStats = s => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (_) { } };
+const todayKey = () => new Date().toISOString().slice(0, 10);
 
 // ─── Failures helpers ─────────────────────────────────────────────────────────
 const fenKey = fen => fen.split(' ').slice(0, 2).join(' '); // board + turn only
@@ -74,7 +74,7 @@ const loadFailures = () => {
   try { const r = localStorage.getItem(FAILURES_KEY); return r ? JSON.parse(r) : {}; }
   catch (_) { return {}; }
 };
-const saveFailures = f => { try { localStorage.setItem(FAILURES_KEY, JSON.stringify(f)); } catch (_) {} };
+const saveFailures = f => { try { localStorage.setItem(FAILURES_KEY, JSON.stringify(f)); } catch (_) { } };
 
 // Sort failures: successes/(fails+1) ascending — hardest (least success rate) first
 const sortedFailures = failures =>
@@ -104,11 +104,11 @@ async function fetchPositionAnalysis(fen, lichessGame = null) {
     username = `${white} vs ${black}`;
   }
 
-  return { 
-    fen, orientation, topMoves, 
-    bestMoveSan: analysis.data.san || analysis.data.text || topMoves[0], 
-    evalScore: analysis.data.eval, 
-    username 
+  return {
+    fen, orientation, topMoves,
+    bestMoveSan: analysis.data.san || analysis.data.text || topMoves[0],
+    evalScore: analysis.data.eval,
+    username
   };
 }
 
@@ -125,34 +125,34 @@ async function fetchRandomPosition() {
     .filter(t => !t.match(/^(\d+\.+|1-0|0-1|1\/2-1\/2|\*)$/));
 
   const puzzlePly = Math.min(puzzle.initialPly + 1, tokens.length);
-  const minPly    = Math.max(16, Math.floor(puzzlePly * 0.50));
-  const maxPly    = Math.max(minPly + 2, Math.floor(puzzlePly * 0.90));
+  const minPly = Math.max(16, Math.floor(puzzlePly * 0.50));
+  const maxPly = Math.max(minPly + 2, Math.floor(puzzlePly * 0.90));
   const targetPly = minPly + Math.floor(Math.random() * (maxPly - minPly));
 
   const g = new Chess();
   for (let i = 0; i < Math.min(targetPly, tokens.length); i++) {
     try { g.move(tokens[i]); } catch (_) { break; }
   }
-  
+
   return fetchPositionAnalysis(g.fen(), lichessGame);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BestMoveTrainer() {
-  const [mode, setMode]         = useState('normal'); // 'normal' | 'practice'
+  const [mode, setMode] = useState('normal'); // 'normal' | 'practice'
   const [position, setPosition] = useState(null);
-  const [game, setGame]         = useState(null);
-  const [fen, setFen]           = useState('start');
-  const [status, setStatus]     = useState('loading');
+  const [game, setGame] = useState(null);
+  const [fen, setFen] = useState('start');
+  const [status, setStatus] = useState('loading');
   const [hintUsed, setHintUsed] = useState(false);
-  const [wrongAttempts, setWrongAttempts]   = useState(0); // per-position wrong count
+  const [wrongAttempts, setWrongAttempts] = useState(0); // per-position wrong count
   const [sessionRecorded, setSessionRecorded] = useState(false); // only record once per position
-  const [stats, setStats]       = useState(loadStats);
+  const [stats, setStats] = useState(loadStats);
   const [failures, setFailures] = useState(loadFailures);
   const [showStats, setShowStats] = useState(false);
-  const [arrows, setArrows]     = useState([]);
+  const [arrows, setArrows] = useState([]);
   const [feedback, setFeedback] = useState(null);
-  const [wrongSquares, setWrongSquares]     = useState({});
+  const [wrongSquares, setWrongSquares] = useState({});
   const [correctSquares, setCorrectSquares] = useState({});
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [moveHighlights, setMoveHighlights] = useState({});
@@ -160,10 +160,10 @@ export default function BestMoveTrainer() {
   // Refs for drag/click coordination
   // onPieceDragBegin fires on mousedown; onSquareClick fires on mouseup for the same gesture.
   // We use refs (not state) so we can read the value synchronously in the same event loop.
-  const dragBeginSquare      = React.useRef(null);
+  const dragBeginSquare = React.useRef(null);
   const dragBeginWasSelected = React.useRef(false);
 
-  const [playMove]    = useSound(moveSound,    { volume: 0.7 });
+  const [playMove] = useSound(moveSound, { volume: 0.7 });
   const [playCapture] = useSound(captureSound, { volume: 0.7 });
 
   // ── Load ──────────────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ export default function BestMoveTrainer() {
     setStatus('loading');
     setPosition(null);
     resetBoard();
-    
+
     let urlFen = null;
     if (initialFenRef.current) {
       initialFenRef.current = false;
@@ -197,15 +197,15 @@ export default function BestMoveTrainer() {
         const sorted = sortedFailures(fl);
         if (!sorted.length) { setMode('normal'); setStatus('loading'); return loadNewPosition('normal'); }
         // Pick from top 3 hardest (add slight randomness)
-        const topN   = Math.min(3, sorted.length);
+        const topN = Math.min(3, sorted.length);
         const picked = sorted[Math.floor(Math.random() * topN)];
         p = {
-          fen:          picked.fen,
-          orientation:  picked.orientation,
-          topMoves:     [picked.bestMove],
-          bestMoveSan:  picked.bestMoveSan,
-          evalScore:    picked.evalScore,
-          username:     picked.username,
+          fen: picked.fen,
+          orientation: picked.orientation,
+          topMoves: [picked.bestMove],
+          bestMoveSan: picked.bestMoveSan,
+          evalScore: picked.evalScore,
+          username: picked.username,
           practiceStats: { fails: picked.fails, successes: picked.successes },
         };
       } else {
@@ -215,7 +215,7 @@ export default function BestMoveTrainer() {
       setGame(new Chess(p.fen));
       setFen(p.fen);
       setStatus('playing');
-      
+
       const baseUrl = window.location.origin + window.location.pathname;
       const fenParam = p.fen.replace(/ /g, '_');
       window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}`);
@@ -224,7 +224,7 @@ export default function BestMoveTrainer() {
       try {
         const p = await fetchRandomPosition();
         setPosition(p); setGame(new Chess(p.fen)); setFen(p.fen); setStatus('playing');
-        
+
         const baseUrl = window.location.origin + window.location.pathname;
         const fenParam = p.fen.replace(/ /g, '_');
         window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}`);
@@ -237,16 +237,16 @@ export default function BestMoveTrainer() {
   // ── Overall stats ─────────────────────────────────────────────────────────
   const recordResult = useCallback((correct) => {
     setStats(prev => {
-      const today   = todayKey();
-      const daily   = prev.dailyHistory[today] || { attempts: 0, correct: 0 };
-      const newStr  = correct ? prev.streak + 1 : 0;
+      const today = todayKey();
+      const daily = prev.dailyHistory[today] || { attempts: 0, correct: 0 };
+      const newStr = correct ? prev.streak + 1 : 0;
       const updated = {
         ...prev,
         totalAttempts: prev.totalAttempts + 1,
-        totalCorrect:  prev.totalCorrect + (correct ? 1 : 0),
-        dailyHistory:  { ...prev.dailyHistory, [today]: { attempts: daily.attempts + 1, correct: daily.correct + (correct ? 1 : 0) } },
-        lastPlayed:    new Date().toISOString(),
-        streak:        newStr,
+        totalCorrect: prev.totalCorrect + (correct ? 1 : 0),
+        dailyHistory: { ...prev.dailyHistory, [today]: { attempts: daily.attempts + 1, correct: daily.correct + (correct ? 1 : 0) } },
+        lastPlayed: new Date().toISOString(),
+        streak: newStr,
         longestStreak: Math.max(prev.longestStreak, newStr),
       };
       saveStats(updated);
@@ -305,7 +305,7 @@ export default function BestMoveTrainer() {
     let moveResult;
     try {
       const moving = gameCopy.get(src);
-      const promo  = moving?.type === 'p' &&
+      const promo = moving?.type === 'p' &&
         ((moving.color === 'w' && tgt[1] === '8') || (moving.color === 'b' && tgt[1] === '1'))
         ? 'q' : undefined;
       moveResult = gameCopy.move({ from: src, to: tgt, promotion: promo });
@@ -349,21 +349,21 @@ export default function BestMoveTrainer() {
   // We use pointer down on the container to get an IMMEDIATE highlight when parsing.
   const handlePointerDown = useCallback((e) => {
     if (!game || status !== 'playing') return;
-    
+
     // Instead of doing bounding box math which can be thrown off by browser scaling
     // or borders, we just ask the DOM what square react-chessboard rendered here:
     const squareEl = e.target.closest('[data-square]');
     if (!squareEl) return;
-    
+
     const square = squareEl.getAttribute('data-square');
     if (!square) return;
-    
+
     const playerColor = position?.orientation === 'white' ? 'w' : 'b';
     const piece = game.get(square);
-    
+
     if (piece && piece.color === playerColor) {
       dragBeginWasSelected.current = selectedSquare === square;
-      dragBeginSquare.current      = square;
+      dragBeginSquare.current = square;
       setSelectedSquare(square);
       setMoveHighlights(getMoveHighlights(square));
       setWrongSquares({}); setCorrectSquares({});
@@ -371,7 +371,7 @@ export default function BestMoveTrainer() {
   }, [game, position, status, selectedSquare, getMoveHighlights]);
 
   const onPieceDrop = useCallback((src, tgt) => {
-    dragBeginSquare.current      = null;
+    dragBeginSquare.current = null;
     dragBeginWasSelected.current = false;
     clearSelection();
     return executeMoveAttempt(src, tgt);
@@ -394,7 +394,7 @@ export default function BestMoveTrainer() {
       // If this mouseup is the tail of an onPieceDragBegin for the SAME square:
       if (dragBeginSquare.current === square) {
         const wasAlreadySelected = dragBeginWasSelected.current;
-        dragBeginSquare.current      = null;
+        dragBeginSquare.current = null;
         dragBeginWasSelected.current = false;
         if (wasAlreadySelected) {
           // Second click on the already-selected piece → deselect
@@ -419,14 +419,14 @@ export default function BestMoveTrainer() {
     if (!position || status !== 'playing') return;
     setHintUsed(true); clearSelection();
     const best = position.topMoves[0];
-    if (best) setArrows([[best.slice(0,2), best.slice(2,4), THEME_COLOR]]);
+    if (best) setArrows([[best.slice(0, 2), best.slice(2, 4), THEME_COLOR]]);
   }, [position, status, clearSelection]);
 
   // ── Reveal ────────────────────────────────────────────────────────────────
   const revealAnswer = useCallback(() => {
     if (!position) return;
     const best = position.topMoves[0];
-    if (best) setArrows([[best.slice(0,2), best.slice(2,4), '#EF4444']]);
+    if (best) setArrows([[best.slice(0, 2), best.slice(2, 4), '#EF4444']]);
     setFeedback({ type: 'revealed', best: position.bestMoveSan });
     setStatus('revealed'); clearSelection();
     // Record this position attempt as a loss if not yet recorded
@@ -447,14 +447,14 @@ export default function BestMoveTrainer() {
   }, [loadNewPosition]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const isDark       = position?.orientation === 'black';
-  const T            = isDark ? DARK : LIGHT;
-  const accuracy     = stats.totalAttempts > 0 ? Math.round((stats.totalCorrect / stats.totalAttempts) * 100) : 0;
-  const todayStats   = stats.dailyHistory[todayKey()] || { attempts: 0, correct: 0 };
-  const todayAcc     = todayStats.attempts > 0 ? Math.round((todayStats.correct / todayStats.attempts) * 100) : 0;
-  const evalDisp     = position?.evalScore != null ? (position.evalScore > 0 ? `+${position.evalScore.toFixed(1)}` : position.evalScore.toFixed(1)) : null;
+  const isDark = position?.orientation === 'black';
+  const T = isDark ? DARK : LIGHT;
+  const accuracy = stats.totalAttempts > 0 ? Math.round((stats.totalCorrect / stats.totalAttempts) * 100) : 0;
+  const todayStats = stats.dailyHistory[todayKey()] || { attempts: 0, correct: 0 };
+  const todayAcc = todayStats.attempts > 0 ? Math.round((todayStats.correct / todayStats.attempts) * 100) : 0;
+  const evalDisp = position?.evalScore != null ? (position.evalScore > 0 ? `+${position.evalScore.toFixed(1)}` : position.evalScore.toFixed(1)) : null;
   const failureCount = Object.keys(failures).filter(k => failures[k].fails > 0).length;
-  const posStats     = position ? failures[fenKey(position.fen)] : null;
+  const posStats = position ? failures[fenKey(position.fen)] : null;
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -536,7 +536,7 @@ export default function BestMoveTrainer() {
           )}
 
           {/* Board */}
-          <Box 
+          <Box
             onPointerDown={handlePointerDown}
             sx={{ borderRadius: '16px', overflow: 'hidden', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none' }}
           >
@@ -567,10 +567,10 @@ export default function BestMoveTrainer() {
           {/* Buttons */}
           <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
             {[
-              { label: 'Hint',   icon: <LightbulbIcon fontSize="small" />, color: '#D97706', action: showHint,    disabled: status !== 'playing' || hintUsed },
-              { label: 'Reveal', icon: <CancelIcon fontSize="small" />,    color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
-              { label: 'Skip',   icon: <SkipNextIcon fontSize="small" />,  color: '#64748B', action: skipPosition, disabled: false },
-              { label: 'New',    icon: <RefreshIcon fontSize="small" />,   color: THEME_COLOR, action: () => loadNewPosition(mode), disabled: false },
+              { label: 'Hint', icon: <LightbulbIcon fontSize="small" />, color: '#D97706', action: showHint, disabled: status !== 'playing' || hintUsed },
+              { label: 'Reveal', icon: <CancelIcon fontSize="small" />, color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
+              { label: 'Skip', icon: <SkipNextIcon fontSize="small" />, color: '#64748B', action: skipPosition, disabled: false },
+              { label: 'New', icon: <RefreshIcon fontSize="small" />, color: THEME_COLOR, action: () => loadNewPosition(mode), disabled: false },
             ].map(({ label, icon, color, action, disabled }) => (
               <Tooltip title={label} key={label}>
                 <span>
@@ -673,8 +673,8 @@ export default function BestMoveTrainer() {
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
             <StatCard label="Today's accuracy" value={`${todayAcc}%`} sub={`${todayStats.correct}/${todayStats.attempts}`} color="#22C55E" dark={isDark} />
             <StatCard label="All-time accuracy" value={`${accuracy}%`} sub={`${stats.totalCorrect}/${stats.totalAttempts}`} color={THEME_COLOR} dark={isDark} />
-            <StatCard label="Current streak"   value={stats.streak}        sub="in a row"  color="#F59E0B" dark={isDark} />
-            <StatCard label="Failed positions" value={failureCount}         sub="saved for review" color="#EF4444" dark={isDark} />
+            <StatCard label="Current streak" value={stats.streak} sub="in a row" color="#F59E0B" dark={isDark} />
+            <StatCard label="Failed positions" value={failureCount} sub="saved for review" color="#EF4444" dark={isDark} />
           </Box>
 
           {/* Full stats panel */}

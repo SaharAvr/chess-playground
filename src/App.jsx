@@ -29,7 +29,7 @@ import { ChessPositionMaster, OpeningTrainer, ThreatDetector, TacticsFinder, Bes
 // Project definitions with enhanced metadata
 const PROJECTS = [
   {
-    id: 'chess-position-master',
+    id: 'position-master',
     title: 'Chess Position Master',
     description: 'Interactive chess position trainer to improve board visualization and piece placement',
     component: ChessPositionMaster,
@@ -37,7 +37,7 @@ const PROJECTS = [
     color: '#16A34A',
   },
   {
-    id: 'chess-opening-trainer',
+    id: 'opening-trainer',
     title: 'Chess Opening Trainer',
     description: 'Learn and practice chess openings with real-time feedback and statistics',
     component: OpeningTrainer,
@@ -45,7 +45,7 @@ const PROJECTS = [
     color: '#2563EB',
   },
   {
-    id: 'chess-threat-detector',
+    id: 'threat-detector',
     title: 'Chess Threat Detector',
     description: 'Test your tactical awareness by identifying pieces under threat in random positions',
     component: ThreatDetector,
@@ -53,7 +53,7 @@ const PROJECTS = [
     color: '#DC2626',
   },
   {
-    id: 'chess-tactics-finder',
+    id: 'tactics-finder',
     title: 'Chess Tactics Finder',
     description: 'Analyze positions in real-time to discover tactical opportunities and winning moves',
     component: TacticsFinder,
@@ -61,7 +61,7 @@ const PROJECTS = [
     color: '#9333EA',
   },
   {
-    id: 'chess-best-move-trainer',
+    id: 'best-move-trainer',
     title: 'Best Move Trainer',
     description: 'Get random puzzles from Lichess and find the best move. Track your accuracy and watch your performance improve over time.',
     component: BestMoveTrainer,
@@ -81,8 +81,8 @@ function Header() {
   const currentProject = PROJECTS.find(p => location.pathname === `/${p.id}`);
 
   return (
-    <AppBar 
-      position="static" 
+    <AppBar
+      position="static"
       elevation={0}
       sx={{
         background: 'transparent',
@@ -115,14 +115,14 @@ function Header() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                sx={{ 
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
                 }}
               >
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     color: 'text.primary',
                     display: 'flex',
                     alignItems: 'center',
@@ -135,7 +135,7 @@ function Header() {
                   <IconButton
                     component={Link}
                     to="/"
-                    sx={{ 
+                    sx={{
                       padding: 0,
                       color: 'inherit',
                       '&:hover': {
@@ -157,15 +157,15 @@ function Header() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                sx={{ 
+                sx={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
                   cursor: 'default',
                 }}
               >
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     color: '#0EA5E9',
                     display: 'flex',
                     alignItems: 'center',
@@ -190,10 +190,10 @@ function Header() {
 
 const cardVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { 
-    y: 0, 
+  visible: {
+    y: 0,
     opacity: 1,
-    transition: { 
+    transition: {
       type: "spring",
       stiffness: 260,
       damping: 20
@@ -214,11 +214,11 @@ function ProjectCard({ project, index }) {
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Card 
+      <Card
         elevation={0}
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           border: '1px solid',
           borderColor: 'rgba(0,0,0,0.06)',
@@ -254,19 +254,19 @@ function ProjectCard({ project, index }) {
               backdropFilter: 'blur(0px)',
             }}
           />
-          <Icon 
-            sx={{ 
+          <Icon
+            sx={{
               fontSize: 64,
               color: 'white',
               filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))',
-            }} 
+            }}
           />
         </CardMedia>
         <CardContent sx={{ flexGrow: 1, p: 4 }}>
-          <Typography 
-            variant="h5" 
-            component="h2" 
-            sx={{ 
+          <Typography
+            variant="h5"
+            component="h2"
+            sx={{
               fontWeight: 700,
               mb: 1.5,
               color: '#0F172A',
@@ -276,9 +276,9 @@ function ProjectCard({ project, index }) {
           >
             {project.title}
           </Typography>
-          <Typography 
-            variant="body1" 
-            sx={{ 
+          <Typography
+            variant="body1"
+            sx={{
               color: '#475569',
               fontWeight: 450,
               lineHeight: 1.5,
@@ -294,7 +294,7 @@ function ProjectCard({ project, index }) {
             to={`/${project.id}`}
             variant="contained"
             fullWidth
-            sx={{ 
+            sx={{
               textTransform: 'none',
               fontWeight: 600,
               borderRadius: '12px',
@@ -322,9 +322,9 @@ function ProjectCard({ project, index }) {
 // Home page component
 function ProjectList() {
   return (
-    <MotionContainer 
-      maxWidth="lg" 
-      sx={{ 
+    <MotionContainer
+      maxWidth="lg"
+      sx={{
         py: { xs: 8, md: 16 },
         minHeight: '100vh',
       }}
@@ -332,19 +332,19 @@ function ProjectList() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <Box 
-        sx={{ 
-          mb: { xs: 10, md: 16 }, 
+      <Box
+        sx={{
+          mb: { xs: 10, md: 16 },
           textAlign: 'center',
           position: 'relative',
         }}
       >
-        <MotionTypography 
-          variant="h1" 
+        <MotionTypography
+          variant="h1"
           component="h1"
           initial={{ y: -20 }}
           animate={{ y: 0 }}
-          sx={{ 
+          sx={{
             fontSize: { xs: '2.5rem', md: '4rem' },
             fontWeight: 800,
             letterSpacing: '-0.04em',
@@ -396,7 +396,7 @@ function ProjectList() {
 function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>
-      <Box sx={{ 
+      <Box sx={{
         minHeight: '100vh',
         background: '#ffffff',
       }}>
