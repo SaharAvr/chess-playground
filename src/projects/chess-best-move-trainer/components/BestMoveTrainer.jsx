@@ -82,6 +82,36 @@ const sortedFailures = failures =>
     .filter(f => f.fails > 0)
     .sort((a, b) => (a.successes / (a.fails + 1)) - (b.successes / (b.fails + 1)));
 
+// ─── Fetch position analysis ────────────────────────────────────────────────────
+async function fetchPositionAnalysis(fen, lichessGame = null) {
+  const g = new Chess(fen);
+  if (g.isGameOver()) throw new Error('Position already over');
+
+  const orientation = g.turn() === 'w' ? 'white' : 'black';
+
+  const analysis = await axios.post('https://chess-api.com/v1', { fen, depth: 14, variants: 3 });
+  if (analysis.data.error) throw new Error(analysis.data.text || 'Engine error');
+
+  const topMoves = Array.isArray(analysis.data)
+    ? analysis.data.map(m => m.move).filter(Boolean)
+    : [analysis.data.move].filter(Boolean);
+  if (!topMoves.length) throw new Error('No moves from engine');
+
+  let username = 'Shared Position';
+  if (lichessGame) {
+    const white = lichessGame.players?.find(p => p.color === 'white')?.name || '?';
+    const black = lichessGame.players?.find(p => p.color === 'black')?.name || '?';
+    username = `${white} vs ${black}`;
+  }
+
+  return { 
+    fen, orientation, topMoves, 
+    bestMoveSan: analysis.data.san || analysis.data.text || topMoves[0], 
+    evalScore: analysis.data.eval, 
+    username 
+  };
+}
+
 // ─── Fetch normal position ────────────────────────────────────────────────────
 async function fetchRandomPosition() {
   const puzzleRes = await axios.get('https://lichess.org/api/puzzle/next', {
@@ -103,23 +133,8 @@ async function fetchRandomPosition() {
   for (let i = 0; i < Math.min(targetPly, tokens.length); i++) {
     try { g.move(tokens[i]); } catch (_) { break; }
   }
-  if (g.isGameOver()) throw new Error('Position already over');
-
-  const fen         = g.fen();
-  const orientation = g.turn() === 'w' ? 'white' : 'black';
-
-  const analysis = await axios.post('https://chess-api.com/v1', { fen, depth: 14, variants: 3 });
-  if (analysis.data.error) throw new Error(analysis.data.text || 'Engine error');
-
-  const topMoves = Array.isArray(analysis.data)
-    ? analysis.data.map(m => m.move).filter(Boolean)
-    : [analysis.data.move].filter(Boolean);
-  if (!topMoves.length) throw new Error('No moves from engine');
-
-  const white = lichessGame.players?.find(p => p.color === 'white')?.name || '?';
-  const black = lichessGame.players?.find(p => p.color === 'black')?.name || '?';
-
-  return { fen, orientation, topMoves, bestMoveSan: analysis.data.san || analysis.data.text || topMoves[0], evalScore: analysis.data.eval, username: `${white} vs ${black}` };
+  
+  return fetchPositionAnalysis(g.fen(), lichessGame);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -158,14 +173,25 @@ export default function BestMoveTrainer() {
     setSelectedSquare(null); setMoveHighlights({});
   };
 
+  const initialFenRef = React.useRef(true);
+
   const loadNewPosition = useCallback(async (currentMode) => {
     const m = currentMode ?? mode;
     setStatus('loading');
     setPosition(null);
     resetBoard();
+    
+    let urlFen = null;
+    if (initialFenRef.current) {
+      initialFenRef.current = false;
+      urlFen = new URLSearchParams(window.location.search).get('fen');
+    }
+
     try {
       let p;
-      if (m === 'practice') {
+      if (urlFen) {
+        p = await fetchPositionAnalysis(urlFen);
+      } else if (m === 'practice') {
         const fl = loadFailures();
         const sorted = sortedFailures(fl);
         if (!sorted.length) { setMode('normal'); setStatus('loading'); return loadNewPosition('normal'); }
@@ -188,11 +214,19 @@ export default function BestMoveTrainer() {
       setGame(new Chess(p.fen));
       setFen(p.fen);
       setStatus('playing');
+      
+      const url = new URL(window.location);
+      url.searchParams.set('fen', p.fen);
+      window.history.replaceState({}, '', url);
     } catch (err) {
       console.error(err);
       try {
         const p = await fetchRandomPosition();
         setPosition(p); setGame(new Chess(p.fen)); setFen(p.fen); setStatus('playing');
+        
+        const url = new URL(window.location);
+        url.searchParams.set('fen', p.fen);
+        window.history.replaceState({}, '', url);
       } catch (_) { setStatus('loading'); }
     }
   }, [mode]); // eslint-disable-line
