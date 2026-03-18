@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, IconButton, Tooltip, Chip,
-  Divider, CircularProgress, Badge,
+  Divider, CircularProgress, Badge, Button,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
@@ -13,6 +15,11 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import SchoolIcon from '@mui/icons-material/School';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { InputAdornment } from '@mui/material';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import axios from 'axios';
@@ -21,6 +28,26 @@ import useSound from 'use-sound';
 import moveSound from '../../tactics-finder/sounds/move.mp3';
 import captureSound from '../../tactics-finder/sounds/capture.mp3';
 import StatsPanel from './StatsPanel';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+
+// ─── Gemini Explanation ───────────────────────────────────────────────────────
+async function fetchMoveExplanation(fen, bestMoveSan) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('gemini_api_key');
+  if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.trim() === '') return null;
+
+  try {
+    const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      contents: [{
+        role: 'user',
+        parts: [{ text: `You are an expert chess coach. Explain briefly and clearly (in 1 or 2 beginner-friendly sentences) why the move "${bestMoveSan}" is the best move in this chess position (FEN: ${fen}). Do not mention the FEN string in your response, just explain the strategy or tactics.` }]
+      }]
+    });
+    return res.data.candidates[0].content.parts[0].text;
+  } catch (err) {
+    console.error("Explanation fetch error:", err);
+    return "Failed to load explanation.";
+  }
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'chess_best_move_trainer_stats';
@@ -156,6 +183,11 @@ export default function BestMoveTrainer() {
   const [correctSquares, setCorrectSquares] = useState({});
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [moveHighlights, setMoveHighlights] = useState({});
+  const [explanation, setExplanation] = useState(null);
+  const [explainingStatus, setExplainingStatus] = useState('idle');
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Refs for drag/click coordination
   // onPieceDragBegin fires on mousedown; onSquareClick fires on mouseup for the same gesture.
@@ -171,6 +203,7 @@ export default function BestMoveTrainer() {
     setFeedback(null); setHintUsed(false); setWrongAttempts(0); setSessionRecorded(false);
     setArrows([]); setWrongSquares({}); setCorrectSquares({});
     setSelectedSquare(null); setMoveHighlights({});
+    setExplanation(null); setExplainingStatus('idle');
   };
 
   const initialFenRef = React.useRef(true);
@@ -207,6 +240,7 @@ export default function BestMoveTrainer() {
           evalScore: picked.evalScore,
           username: picked.username,
           practiceStats: { fails: picked.fails, successes: picked.successes },
+          explanation: picked.explanation,
         };
       } else {
         p = await fetchRandomPosition();
@@ -277,6 +311,17 @@ export default function BestMoveTrainer() {
     setFailures(prev => {
       if (!prev[key]) return prev; // not in failures, no need to track success
       const updated = { ...prev, [key]: { ...prev[key], successes: prev[key].successes + 1, lastAttempted: new Date().toISOString() } };
+      saveFailures(updated);
+      return updated;
+    });
+  }, []);
+
+  const updateFailureExplanation = useCallback((pos, exp) => {
+    if (!pos) return;
+    const key = fenKey(pos.fen);
+    setFailures(prev => {
+      if (!prev[key]) return prev;
+      const updated = { ...prev, [key]: { ...prev[key], explanation: exp } };
       saveFailures(updated);
       return updated;
     });
@@ -434,6 +479,22 @@ export default function BestMoveTrainer() {
     recordFailure(position);
   }, [position, sessionRecorded, recordResult, recordFailure, clearSelection]);
 
+  // ── Ask AI ────────────────────────────────────────────────────────────────
+  const handleAskAI = useCallback(() => {
+    if (position?.explanation) {
+      setExplanation(position.explanation);
+      setExplainingStatus('done');
+      return;
+    }
+    setExplainingStatus('loading');
+    const san = status === 'correct' ? feedback?.san : position.bestMoveSan;
+    fetchMoveExplanation(position.fen, san).then(exp => {
+      setExplanation(exp);
+      setExplainingStatus('done');
+      updateFailureExplanation(position, exp);
+    });
+  }, [position, status, feedback, updateFailureExplanation]);
+
   // ── Skip ──────────────────────────────────────────────────────────────────
   const skipPosition = useCallback(() => {
     if (!sessionRecorded && wrongAttempts > 0) { recordResult(false); }
@@ -508,6 +569,12 @@ export default function BestMoveTrainer() {
             <IconButton onClick={() => setShowStats(v => !v)}
               sx={{ color: showStats ? THEME_COLOR : T.iconColor, border: `1.5px solid ${showStats ? THEME_COLOR : T.iconBorder}`, borderRadius: '10px', p: '6px', transition: 'all 0.2s' }}>
               <BarChartIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Settings">
+            <IconButton onClick={() => setShowSettings(true)}
+              sx={{ color: showSettings ? THEME_COLOR : T.iconColor, border: `1.5px solid ${showSettings ? THEME_COLOR : T.iconBorder}`, borderRadius: '10px', p: '6px', transition: 'all 0.2s', ml: 0.5 }}>
+              <SettingsIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
@@ -611,6 +678,7 @@ export default function BestMoveTrainer() {
                   <Typography variant="body2" sx={{ color: T.correctSub, mb: 2 }}>
                     <strong>{feedback?.san}</strong> matches the engine's top choice.
                   </Typography>
+                  <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
                   <NextBtn onClick={() => loadNewPosition(mode)} />
                 </Box>
               </motion.div>
@@ -625,6 +693,7 @@ export default function BestMoveTrainer() {
                   <Typography variant="body2" sx={{ color: T.wrongSub, mb: 2 }}>
                     Best move: <strong>{feedback?.best}</strong> (shown by arrow). Position saved to practice list.
                   </Typography>
+                  <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
                   <NextBtn onClick={() => loadNewPosition(mode)} />
                 </Box>
               </motion.div>
@@ -687,6 +756,68 @@ export default function BestMoveTrainer() {
           </AnimatePresence>
         </Box>
       </Box>
+
+      {/* ── Settings Dialog ── */}
+      <Dialog open={showSettings} onClose={() => setShowSettings(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px', background: isDark ? '#160B2A' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: T.textPrimary }}>Settings</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: T.textSecondary, mb: 3 }}>
+            To get AI explanations for the best moves, you can provide your own free Gemini API key. This is stored locally in your browser and never sent to our servers.
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            label="Gemini API Key"
+            variant="outlined"
+            type={showApiKey ? 'text' : 'password'}
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            InputLabelProps={{ sx: { color: T.textSecondary } }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Tooltip title={showApiKey ? "Hide key" : "Show key"}>
+                    <IconButton size="small" onClick={() => setShowApiKey(!showApiKey)} sx={{ color: T.textSecondary, mr: apiKeyInput ? 0.5 : -1 }}>
+                      {showApiKey ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                  {apiKeyInput && (
+                    <>
+                      <Tooltip title="Copy key">
+                        <IconButton size="small" onClick={() => navigator.clipboard.writeText(apiKeyInput)} sx={{ color: T.textSecondary, mr: 0.5 }}>
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Remove key">
+                        <IconButton size="small" onClick={() => { setApiKeyInput(''); localStorage.removeItem('gemini_api_key'); }} sx={{ color: '#EF4444', mr: -1 }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                </InputAdornment>
+              )
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                color: T.textPrimary,
+                '& fieldset': { borderColor: T.iconBorder },
+                '&:hover fieldset': { borderColor: THEME_COLOR },
+                pr: 1
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setShowSettings(false)} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
+          <Button onClick={() => {
+            localStorage.setItem('gemini_api_key', apiKeyInput);
+            setShowSettings(false);
+          }} variant="contained" sx={{ background: THEME_COLOR, '&:hover': { background: '#6D28D9' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
+            Save Key
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -706,6 +837,41 @@ function NextBtn({ onClick, label = 'Next Position →' }) {
   return (
     <Box component="button" onClick={onClick} sx={{ display: 'block', width: '100%', py: 1.5, px: 3, border: 'none', borderRadius: '10px', background: 'linear-gradient(90deg, #7C3AED, #9F67FA)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', letterSpacing: '-0.01em', boxShadow: '0 4px 14px rgba(124,58,237,0.25)', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 6px 20px rgba(124,58,237,0.35)' } }}>
       {label}
+    </Box>
+  );
+}
+
+function ExplanationBox({ status, explanation, T, isDark, THEME_COLOR, onAskAI }) {
+  if (status === 'idle') {
+    return (
+      <Box sx={{ mb: 2.5 }}>
+        <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
+          Ask AI Coach why this is best
+        </Button>
+      </Box>
+    );
+  }
+  
+  return (
+    <Box sx={{ mt: 2, mb: 2.5, p: 2, borderRadius: '12px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(124,58,237,0.03)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(124,58,237,0.15)'}` }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+        <AutoAwesomeIcon sx={{ fontSize: 16, color: THEME_COLOR }} />
+        <Typography variant="caption" sx={{ color: THEME_COLOR, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coach Explanation</Typography>
+      </Box>
+      {status === 'loading' ? (
+         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+           <CircularProgress size={14} sx={{ color: T.textTertiary }} />
+           <Typography variant="body2" sx={{ color: T.textTertiary, fontStyle: 'italic' }}>Analyzing position...</Typography>
+         </Box>
+      ) : explanation ? (
+        <Typography variant="body2" sx={{ color: T.textPrimary, mt: 0.5, lineHeight: 1.5 }}>
+          {explanation}
+        </Typography>
+      ) : (
+        <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, fontStyle: 'italic' }}>
+          No API key found. Add a Gemini key to .env to see explanations.
+        </Typography>
+      )}
     </Box>
   );
 }
