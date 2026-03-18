@@ -3,6 +3,7 @@ import {
   Box, Typography, IconButton, Tooltip, Chip,
   Divider, CircularProgress, Badge, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Snackbar, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -192,6 +193,7 @@ export default function BestMoveTrainer() {
   const [showSettings, setShowSettings] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
   // Refs for drag/click coordination
   // onPieceDragBegin fires on mousedown; onSquareClick fires on mouseup for the same gesture.
@@ -306,6 +308,17 @@ export default function BestMoveTrainer() {
       }
     };
   }, [showSettings]);
+
+  // ── Toast/Settings ────────────────────────────────────────────────────────
+  const handleCloseToast = () => setToast(prev => ({ ...prev, open: false }));
+
+  const handleSaveAPIKey = () => {
+    localStorage.setItem('gemini_api_key', apiKeyInput);
+    setShowSettings(false);
+    // Reset explaining status so the user is immediately presented with the "Ask AI" button again
+    setExplainingStatus('idle');
+    setToast({ open: true, message: 'API key saved perfectly! You can ask the coach now.', severity: 'success' });
+  };
 
   // ── Overall stats ─────────────────────────────────────────────────────────
   const recordResult = useCallback((correct) => {
@@ -850,14 +863,18 @@ export default function BestMoveTrainer() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setShowSettings(false)} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-          <Button onClick={() => {
-            localStorage.setItem('gemini_api_key', apiKeyInput);
-            setShowSettings(false);
-          }} variant="contained" sx={{ background: THEME_COLOR, '&:hover': { background: '#6D28D9' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
+          <Button onClick={handleSaveAPIKey} variant="contained" sx={{ background: THEME_COLOR, '&:hover': { background: '#6D28D9' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
             Save Key
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Toast ── */}
+      <Snackbar open={toast.open} autoHideDuration={4000} onClose={handleCloseToast} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={handleCloseToast} severity={toast.severity} variant="filled" sx={{ width: '100%', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontWeight: 600 }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
@@ -908,9 +925,14 @@ function ExplanationBox({ status, explanation, T, isDark, THEME_COLOR, onAskAI }
           {explanation}
         </Typography>
       ) : (
-        <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, fontStyle: 'italic' }}>
-          No API key found. Add a Gemini key to .env to see explanations.
-        </Typography>
+        <Box>
+          <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, fontStyle: 'italic', mb: 1 }}>
+            No API key found, or API call failed. Add a Gemini key in Settings.
+          </Typography>
+          <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
+            Try Ask AI Again
+          </Button>
+        </Box>
       )}
     </Box>
   );
