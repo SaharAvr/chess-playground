@@ -184,7 +184,8 @@ export default function BestMoveTrainer() {
     let urlFen = null;
     if (initialFenRef.current) {
       initialFenRef.current = false;
-      urlFen = new URLSearchParams(window.location.search).get('fen');
+      const param = new URLSearchParams(window.location.search).get('fen');
+      if (param) urlFen = param.replace(/_/g, ' '); // Decode underscores back to spaces
     }
 
     try {
@@ -215,18 +216,18 @@ export default function BestMoveTrainer() {
       setFen(p.fen);
       setStatus('playing');
       
-      const url = new URL(window.location);
-      url.searchParams.set('fen', p.fen);
-      window.history.replaceState({}, '', url);
+      const baseUrl = window.location.origin + window.location.pathname;
+      const fenParam = p.fen.replace(/ /g, '_');
+      window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}${window.location.hash}`);
     } catch (err) {
       console.error(err);
       try {
         const p = await fetchRandomPosition();
         setPosition(p); setGame(new Chess(p.fen)); setFen(p.fen); setStatus('playing');
         
-        const url = new URL(window.location);
-        url.searchParams.set('fen', p.fen);
-        window.history.replaceState({}, '', url);
+        const baseUrl = window.location.origin + window.location.pathname;
+        const fenParam = p.fen.replace(/ /g, '_');
+        window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}${window.location.hash}`);
       } catch (_) { setStatus('loading'); }
     }
   }, [mode]); // eslint-disable-line
