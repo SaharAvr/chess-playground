@@ -218,7 +218,7 @@ export default function BestMoveTrainer() {
       
       const baseUrl = window.location.origin + window.location.pathname;
       const fenParam = p.fen.replace(/ /g, '_');
-      window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}${window.location.hash}`);
+      window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}`);
     } catch (err) {
       console.error(err);
       try {
@@ -227,7 +227,7 @@ export default function BestMoveTrainer() {
         
         const baseUrl = window.location.origin + window.location.pathname;
         const fenParam = p.fen.replace(/ /g, '_');
-        window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}${window.location.hash}`);
+        window.history.replaceState({}, '', `${baseUrl}?fen=${fenParam}`);
       } catch (_) { setStatus('loading'); }
     }
   }, [mode]); // eslint-disable-line

@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -78,7 +78,7 @@ const MotionTypography = motion.create(Typography);
 function Header() {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const currentProject = PROJECTS.find(p => location.pathname === `/project/${p.id}`);
+  const currentProject = PROJECTS.find(p => location.pathname === `/${p.id}`);
 
   return (
     <AppBar 
@@ -291,7 +291,7 @@ function ProjectCard({ project, index }) {
         <CardActions sx={{ p: 4, pt: 0 }}>
           <Button
             component={Link}
-            to={`/project/${project.id}`}
+            to={`/${project.id}`}
             variant="contained"
             fullWidth
             sx={{ 
@@ -395,7 +395,7 @@ function ProjectList() {
 
 function App() {
   return (
-    <Router>
+    <Router basename={import.meta.env.BASE_URL}>
       <Box sx={{ 
         minHeight: '100vh',
         background: '#ffffff',
@@ -407,7 +407,7 @@ function App() {
             {PROJECTS.map((project) => (
               <Route
                 key={project.id}
-                path={`/project/${project.id}`}
+                path={`/${project.id}`}
                 element={<project.component />}
               />
             ))}
