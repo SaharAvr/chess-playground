@@ -33,7 +33,13 @@ const SharedModal = ({ open, onClose, title, children, actions, maxWidth = 'sm',
         } 
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1, pt: 1 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        pr: 1, 
+        pt: fullScreen ? `calc(6px + env(safe-area-inset-top, 0px))` : 1 
+      }}>
         <DialogTitle sx={{ fontWeight: 800, p: 2, color: titleColor, letterSpacing: '-0.02em' }}>{title}</DialogTitle>
         {showX && (
           <IconButton onClick={onClose} sx={{ color: iconColor, mr: 1 }}>

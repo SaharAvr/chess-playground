@@ -769,10 +769,9 @@ export default function BestMoveTrainer() {
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
-        pt: { xs: 1.5, md: 0 }, 
-        pb: { xs: 2, md: 0 }, 
-        px: { xs: 1.5, md: 4 },
-        overflow: { xs: 'auto', md: 'hidden' }
+        pt: { xs: `calc(18px + env(safe-area-inset-top, 0px))`, md: 0 }, 
+        pb: { xs: `calc(16px + env(safe-area-inset-bottom, 0px))`, md: 0 }, 
+        px: { xs: `calc(12px + env(safe-area-inset-left, 0px))`, md: 4 },
       }}>
 
         {/* Mobile Top Header */}
@@ -975,14 +974,6 @@ export default function BestMoveTrainer() {
             background: isDark ? '#160B2A' : '#ffffff', 
             border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' 
           }}
-          actions={(
-            <>
-              <Button onClick={handleCloseSettings} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-              <Button onClick={handleSaveAPIKey} variant="contained" sx={{ background: THEME_COLOR, '&:hover': { background: '#6D28D9' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
-                Save Key
-              </Button>
-            </>
-          )}
         >
           <Typography variant="body2" sx={{ color: T.textSecondary, mb: 3 }}>
             To get AI explanations for the best moves, you can provide your own free Gemini API key. This is stored locally in your browser and never sent to our servers.
@@ -1030,6 +1021,48 @@ export default function BestMoveTrainer() {
               }
             }}
           />
+
+          {/* Inline Buttons for better flow on mobile */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' }, 
+            width: '100%', 
+            gap: 1.5,
+            mt: 4,
+            pb: 2
+          }}>
+            <Button 
+              onClick={handleSaveAPIKey} 
+              variant="contained" 
+              fullWidth={true}
+              sx={{ 
+                background: THEME_COLOR, 
+                '&:hover': { background: '#6D28D9' }, 
+                textTransform: 'none', 
+                fontWeight: 600, 
+                borderRadius: '12px',
+                py: 1.5,
+                order: { xs: 1, sm: 2 } 
+              }}
+            >
+              Save Key
+            </Button>
+            <Button 
+              onClick={handleCloseSettings} 
+              fullWidth={true}
+              sx={{ 
+                color: T.textSecondary, 
+                textTransform: 'none', 
+                fontWeight: 600, 
+                borderRadius: '12px', 
+                py: 1.5,
+                border: `1px solid ${T.borderColor}`,
+                order: { xs: 2, sm: 1 } 
+              }}
+            >
+              Cancel
+            </Button>
+          </Box>
         </SharedModal>
         {/* ── Confirmation Modal ── */}
         <SharedModal

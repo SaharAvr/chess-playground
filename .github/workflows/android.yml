@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build Web App
+        env:
+          VITE_APP_PLATFORM: android
+        run: yarn build
+
+      - name: Capacitor Sync
+        run: npx cap sync android
+
+      - name: Build Android Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Rename and Prepare APK
+        run: |
+          mkdir -p build-release
+          cp android/app/build/outputs/apk/debug/app-debug.apk build-release/best-move-trainer-debug.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: best-move-trainer-apk
+          path: build-release/best-move-trainer-debug.apk

@@ -396,6 +396,17 @@ function ProjectList() {
 }
 
 function App() {
+  // Mobile/Capacitor standalone mode: go straight to Best Move Trainer
+  const isCapacitor = window.hasOwnProperty('Capacitor');
+
+  if (isCapacitor) {
+    return (
+      <Box sx={{ minHeight: '100vh', background: '#ffffff' }}>
+        <BestMoveTrainer />
+      </Box>
+    );
+  }
+
   return (
     <Router basename={import.meta.env.BASE_URL}>
       <Box sx={{

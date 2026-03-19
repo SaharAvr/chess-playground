@@ -8,9 +8,13 @@
     "dev": "vite",
     "build": "vite build && cp dist/index.html dist/404.html",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:run": "./run-android.sh"
   },
   "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^3.12.0",
     "@chessire/pieces": "^1.0.3",
