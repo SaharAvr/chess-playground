@@ -307,6 +307,9 @@ export default function BestMoveTrainer() {
   }, []);
 
   // Toasts and confirmation are handled via context or local state
+  const handleCloseStats = useCallback(() => setShowStats(false), []);
+  const handleCloseSettings = useCallback(() => setShowSettings(false), []);
+  const handleCloseConfirmReset = useCallback(() => setShowConfirmReset(false), []);
 
   // ── Toast/Settings ────────────────────────────────────────────────────────
   const showToast = useToast();
@@ -864,7 +867,7 @@ export default function BestMoveTrainer() {
         {/* ── Stats Modal ── */}
         <SharedModal 
           open={showStats} 
-          onClose={() => setShowStats(false)} 
+          onClose={handleCloseStats} 
           title="Training History"
           maxWidth="md"
           paperSx={{ 
@@ -881,7 +884,7 @@ export default function BestMoveTrainer() {
         {/* ── Settings Modal ── */}
         <SharedModal
           open={showSettings}
-          onClose={() => setShowSettings(false)}
+          onClose={handleCloseSettings}
           title="Settings"
           isDark={isDark}
           T={T}
@@ -891,7 +894,7 @@ export default function BestMoveTrainer() {
           }}
           actions={(
             <>
-              <Button onClick={() => setShowSettings(false)} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
+              <Button onClick={handleCloseSettings} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
               <Button onClick={handleSaveAPIKey} variant="contained" sx={{ background: THEME_COLOR, '&:hover': { background: '#6D28D9' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
                 Save Key
               </Button>
@@ -914,19 +917,19 @@ export default function BestMoveTrainer() {
               endAdornment: (
                 <InputAdornment position="end">
                   <Tooltip title={showApiKey ? "Hide key" : "Show key"}>
-                    <IconButton size="small" onClick={() => setShowApiKey(!showApiKey)} sx={{ color: T.textSecondary, mr: apiKeyInput ? 0.5 : -1 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setShowApiKey(!showApiKey); }} sx={{ color: T.textSecondary, mr: apiKeyInput ? 0.5 : -1 }}>
                       {showApiKey ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                     </IconButton>
                   </Tooltip>
                   {apiKeyInput && (
                     <>
                       <Tooltip title="Copy key">
-                        <IconButton size="small" onClick={() => navigator.clipboard.writeText(apiKeyInput)} sx={{ color: T.textSecondary, mr: 0.5 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(apiKeyInput); }} sx={{ color: T.textSecondary, mr: 0.5 }}>
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Remove key">
-                        <IconButton size="small" onClick={() => { setApiKeyInput(''); localStorage.removeItem('gemini_api_key'); }} sx={{ color: '#EF4444', mr: -1 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setApiKeyInput(''); localStorage.removeItem('gemini_api_key'); }} sx={{ color: '#EF4444', mr: -1 }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -948,7 +951,7 @@ export default function BestMoveTrainer() {
         {/* ── Confirmation Modal ── */}
         <SharedModal
           open={showConfirmReset}
-          onClose={() => setShowConfirmReset(false)}
+          onClose={handleCloseConfirmReset}
           title="Reset Statistics?"
           maxWidth="xs"
           isDark={isDark}
@@ -959,7 +962,7 @@ export default function BestMoveTrainer() {
           }}
           actions={(
             <>
-              <Button onClick={() => setShowConfirmReset(false)} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
+              <Button onClick={handleCloseConfirmReset} sx={{ color: T.textSecondary, textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
               <Button onClick={handleResetStats} variant="contained" sx={{ background: '#EF4444', '&:hover': { background: '#DC2626' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
                 Confirm Reset
               </Button>
