@@ -138,7 +138,8 @@ async function fetchPositionAnalysis(fen, lichessGame = null) {
   }
 
   const bestData = Array.isArray(analysis.data) ? analysis.data[0] : analysis.data;
-  const pv = bestData?.continuationArr ? bestData.continuationArr.join(' ') : '';
+  const pvRaw = bestData?.continuationArr || (bestData?.text?.includes(' ') ? bestData.text.split(' ') : [bestData?.text].filter(Boolean));
+  const pv = pvRaw.join(' ');
 
   return {
     fen, orientation, topMoves,
@@ -200,6 +201,7 @@ export default function BestMoveTrainer() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [boardWidth, setBoardWidth] = useState(440);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [pvIndex, setPvIndex] = useState(-1);
 
 
 
@@ -207,12 +209,21 @@ export default function BestMoveTrainer() {
   const [playCapture] = useSound(captureSound, { volume: 0.7 });
 
   // ── Load ──────────────────────────────────────────────────────────────────
-  const resetBoard = () => {
-    setFeedback(null); setHintUsed(false); setWrongAttempts(0); setSessionRecorded(false);
-    setArrows([]); setWrongSquares({}); setCorrectSquares({});
-    setSelectedSquare(null); setMoveHighlights({});
-    setExplanation(null); setExplainingStatus('idle');
-  };
+  const resetBoard = useCallback(() => {
+    setFen('');
+    setFeedback(null);
+    setArrows([]);
+    setWrongSquares({});
+    setCorrectSquares({});
+    setHintUsed(false);
+    setWrongAttempts(0);
+    setExplanation(null);
+    setExplainingStatus('idle');
+    setSessionRecorded(false);
+    setPvIndex(-1);
+    setSelectedSquare(null);
+    setMoveHighlights({});
+  }, []);
 
   const initialFenRef = React.useRef(true);
   const isFetchingRef = React.useRef(false);
@@ -429,10 +440,49 @@ export default function BestMoveTrainer() {
     
     // Exploratory mode
     if (status === 'correct' || status === 'revealed') {
+      const pvArray = (position.pv || '').split(' ').filter(Boolean);
+      
+      // If we haven't started tracking, find where we are in the PV
+      let currentIdx = pvIndex;
+      if (currentIdx === -1 && pvArray.length > 0) {
+        // If the move I just played is PV[0], then I'm at index 0.
+        // If it's NOT PV[0], maybe I'm playing PV[1] (if PV[0] was the opponent response)? 
+        // Or maybe I just went off-track.
+        if (playedUci === pvArray[0]) currentIdx = 0;
+      } else if (currentIdx !== -1) {
+        // We were already on track, check if this is the next move
+        if (playedUci === pvArray[currentIdx + 1]) {
+          currentIdx++;
+        } else {
+          currentIdx = -1; // Off-track
+        }
+      }
+
       if (moveResult.captured) playCapture(); else playMove();
       setGame(gameCopy); setFen(gameCopy.fen());
       setCorrectSquares({}); setWrongSquares({});
       clearSelection();
+
+      setPvIndex(currentIdx);
+      if (currentIdx !== -1) {
+        const nextMove = pvArray[currentIdx + 1];
+        if (nextMove && nextMove.length >= 4) {
+          const from = nextMove.slice(0, 2);
+          const to = nextMove.slice(2, 4);
+          // Restore bold color since it will be UNDER the pieces now
+          setArrows([[from, to, '#8B5CF6']]);
+          setCorrectSquares({ 
+            [from]: { background: 'radial-gradient(circle, transparent 20%, rgba(139,92,246,0.5) 21%, rgba(139,92,246,0.5) 30%, transparent 31%)' }, 
+            [to]: { background: isDark ? 'rgba(139,92,246,0.5)' : 'rgba(124,58,237,0.3)', borderRadius: '12px' } 
+          });
+        } else {
+          setArrows([]);
+          setCorrectSquares({});
+        }
+      } else {
+        setArrows([]);
+        setCorrectSquares({});
+      }
       return true;
     }
 
@@ -448,7 +498,28 @@ export default function BestMoveTrainer() {
       setArrows([]);
       setFeedback({ type: 'correct', san: moveResult.san });
       setStatus('correct');
-      // Record overall result only once per position
+      
+      // Start PV / continuation tracking
+      const pvArray = position.pv.split(' ').filter(Boolean);
+      if (pvArray.length > 0) {
+        // If the first move in the PV array is NOT the move we just played, 
+        // then the PV starts with the opponent's response.
+        const firstIsMine = pvArray[0] === playedUci;
+        const currentIdxInPV = firstIsMine ? 0 : -1;
+        setPvIndex(currentIdxInPV);
+        
+        const nextMove = pvArray[currentIdxInPV + 1];
+        if (nextMove && nextMove.length >= 4) {
+          const from = nextMove.slice(0, 2);
+          const to = nextMove.slice(2, 4);
+          setArrows([[from, to, '#8B5CF6']]);
+          setCorrectSquares({ 
+            [from]: { background: 'radial-gradient(circle, transparent 20%, rgba(139,92,246,0.5) 21%, rgba(139,92,246,0.5) 30%, transparent 31%)' }, 
+            [to]: { background: isDark ? 'rgba(139,92,246,0.5)' : 'rgba(124,58,237,0.3)', borderRadius: '12px' } 
+          });
+        }
+      }
+
       if (!sessionRecorded) { recordResult(true); setSessionRecorded(true); }
       recordSuccess(position);
     } else {
@@ -727,7 +798,19 @@ export default function BestMoveTrainer() {
             {renderMeta({ xs: 'flex', md: 'none' })}
 
             {/* Core Board */}
-            <Box sx={{ width: boardWidth, borderRadius: '16px', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'all 0.3s ease', flexShrink: 0 }}>
+            <Box sx={{ 
+              width: boardWidth, 
+              borderRadius: '16px', 
+              boxShadow: T.boardShadow, 
+              border: `1px solid ${T.boardBorder}`, 
+              position: 'relative', 
+              transition: 'all 0.3s ease', 
+              flexShrink: 0,
+              // FIX: Push Arrows under Pieces
+              // react-chessboard renders arrows in an SVG sibling to the pieces container
+              '& svg[width][height]': { zIndex: 1, position: 'relative' },
+              '& [data-piece]': { zIndex: 10, position: 'relative' }
+            }}>
               {status === 'loading' ? (
                 <Box sx={{ width: boardWidth, height: boardWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '12px' }}>
                   <Box sx={{ textAlign: 'center' }}>
