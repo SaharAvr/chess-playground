@@ -674,8 +674,7 @@ export default function BestMoveTrainer() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <ToastProvider>
-      <Box sx={{ 
+    <Box sx={{ 
         height: { xs: 'auto', md: '100vh' }, 
         minHeight: { xs: '100vh', md: 'auto' },
         background: T.bg, 
@@ -964,8 +963,7 @@ export default function BestMoveTrainer() {
             </Typography>
           </Box>
         </SharedModal>
-      </Box>
-    </ToastProvider>
+    </Box>
   );
 }
 
