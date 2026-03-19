@@ -197,11 +197,7 @@ export default function BestMoveTrainer() {
   const [boardWidth, setBoardWidth] = useState(440);
   const boardContainerRef = React.useRef(null);
 
-  // Refs for drag/click coordination
-  // onPieceDragBegin fires on mousedown; onSquareClick fires on mouseup for the same gesture.
-  // We use refs (not state) so we can read the value synchronously in the same event loop.
-  const dragBeginSquare = React.useRef(null);
-  const dragBeginWasSelected = React.useRef(false);
+
 
   const [playMove] = useSound(moveSound, { volume: 0.7 });
   const [playCapture] = useSound(captureSound, { volume: 0.7 });
@@ -293,7 +289,7 @@ export default function BestMoveTrainer() {
     const observer = new ResizeObserver(entries => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
-        setBoardWidth(Math.min(440, w));
+        if (w > 0) setBoardWidth(Math.min(440, w));
       }
     });
     if (boardContainerRef.current) observer.observe(boardContainerRef.current);
@@ -462,75 +458,71 @@ export default function BestMoveTrainer() {
     return isCorrect;
   }, [game, position, status, wrongAttempts, sessionRecorded, playMove, playCapture, recordResult, recordSuccess, recordFailure, clearSelection]);
 
-  // ── Drag/click ────────────────────────────────────────────────────────────
-  // React-DnD's dragBegin only fires after moving the mouse past a threshold.
-  // We use pointer down on the container to get an IMMEDIATE highlight when parsing.
-  const handlePointerDown = useCallback((e) => {
-    if (!game || status !== 'playing') return;
-
-    // Instead of doing bounding box math which can be thrown off by browser scaling
-    // or borders, we just ask the DOM what square react-chessboard rendered here:
-    const squareEl = e.target.closest('[data-square]');
-    if (!squareEl) return;
-
-    const square = squareEl.getAttribute('data-square');
-    if (!square) return;
-
-    const playerColor = position?.orientation === 'white' ? 'w' : 'b';
-    const piece = game.get(square);
-
-    if (piece && piece.color === playerColor) {
-      dragBeginWasSelected.current = selectedSquare === square;
-      dragBeginSquare.current = square;
-      setSelectedSquare(square);
-      setMoveHighlights(getMoveHighlights(square));
-      setWrongSquares({}); setCorrectSquares({});
-    }
-  }, [game, position, status, selectedSquare, getMoveHighlights]);
+  // ── Drag / Click ──────────────────────────────────────────────────────────
+  // onPieceDragBegin: fires reliably from react-chessboard when dragging starts.
+  const onPieceDragBegin = useCallback((_piece, sourceSquare) => {
+    if (status !== 'playing') return;
+    setSelectedSquare(sourceSquare);
+    setMoveHighlights(getMoveHighlights(sourceSquare));
+    setWrongSquares({}); setCorrectSquares({});
+  }, [status, getMoveHighlights]);
 
   const onPieceDrop = useCallback((src, tgt) => {
-    dragBeginSquare.current = null;
-    dragBeginWasSelected.current = false;
     clearSelection();
     return executeMoveAttempt(src, tgt);
   }, [executeMoveAttempt, clearSelection]);
 
   const onSquareClick = useCallback((square) => {
-    if (!game) { clearSelection(); return; }
-    const playerColor = position?.orientation === 'white' ? 'w' : 'b';
+    if (!game || status !== 'playing') return;
+
+    // Use game.turn() directly — always in sync with the actual board position
+    const playerColor = game.turn(); // 'w' or 'b'
     const piece = game.get(square);
 
-    // Move execution (click-to-move second click)
-    if (status === 'playing' && selectedSquare && moveHighlights[square] && square !== selectedSquare) {
-      dragBeginSquare.current = null;
+    // Second click on a highlighted destination → execute move
+    if (selectedSquare && moveHighlights[square] && square !== selectedSquare) {
       executeMoveAttempt(selectedSquare, square);
       return;
     }
 
-    // Own piece clicked
+    // Click on own piece → select + show moves
     if (piece && piece.color === playerColor) {
-      // If this mouseup is the tail of an onPieceDragBegin for the SAME square:
-      if (dragBeginSquare.current === square) {
-        const wasAlreadySelected = dragBeginWasSelected.current;
-        dragBeginSquare.current = null;
-        dragBeginWasSelected.current = false;
-        if (wasAlreadySelected) {
-          // Second click on the already-selected piece → deselect
-          clearSelection();
-        }
-        // First click: dragBegin already set highlights, just return
-        return;
+      if (selectedSquare === square) {
+        clearSelection();
+      } else {
+        // Inline move highlight calculation — avoids any stale getMoveHighlights closure
+        const movesFrom = game.moves({ verbose: true }).filter(m => m.from === square);
+        const hl = { [square]: { background: 'rgba(246,246,105,0.28)' } };
+        movesFrom.forEach(m => {
+          hl[m.to] = m.captured
+            ? { background: 'radial-gradient(circle, transparent 58%, rgba(20,20,20,0.22) 58%)' }
+            : { background: 'radial-gradient(circle, rgba(20,20,20,0.18) 28%, transparent 29%)' };
+        });
+        setSelectedSquare(square);
+        setMoveHighlights(hl);
+        setWrongSquares({}); setCorrectSquares({});
       }
-      // Clicked a different own piece (no dragBegin preceded this)
-      setSelectedSquare(square);
-      setMoveHighlights(getMoveHighlights(square));
-      setWrongSquares({}); setCorrectSquares({});
       return;
     }
 
     clearSelection();
-  }, [game, position, status, selectedSquare, moveHighlights, getMoveHighlights, executeMoveAttempt, clearSelection]);
+  }, [game, status, selectedSquare, moveHighlights, executeMoveAttempt, clearSelection]);
 
+  // ── Compute Check Square ──────────────────────────────────────────────────
+  const checkSquare = React.useMemo(() => {
+    if (!game || !game.inCheck()) return {};
+    const turn = game.turn();
+    const board = game.board();
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = board[r][c];
+        if (p && p.type === 'k' && p.color === turn) {
+          return { [p.square]: { background: 'radial-gradient(ellipse at center, rgba(239,68,68,0.9) 0%, rgba(239,68,68,0.4) 40%, transparent 70%)', borderRadius: '50%' } };
+        }
+      }
+    }
+    return {};
+  }, [game, fen]); // recompute when FEN updates
 
   // ── Hint ──────────────────────────────────────────────────────────────────
   const showHint = useCallback(() => {
@@ -661,7 +653,10 @@ export default function BestMoveTrainer() {
       <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', gap: { xs: 1.5, md: 3 }, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'flex-start' }, px: { xs: 1.5, md: 0 } }}>
 
         {/* ── Board column ── */}
-        <Box ref={boardContainerRef} sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, flex: { xs: '1 1 auto', md: '0 0 auto' }, width: { xs: '100%', md: 'auto' } }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, flex: { xs: '1 1 auto', md: '0 0 auto' }, width: { xs: '100%', md: 'auto' } }}>
+
+          {/* Sizing probe — this is the element we observe to get board width */}
+          <Box ref={boardContainerRef} sx={{ width: '100%', height: 0 }} />
 
           {/* meta row */}
           {position && (
@@ -681,8 +676,7 @@ export default function BestMoveTrainer() {
 
           {/* Board */}
           <Box
-            onPointerDown={handlePointerDown}
-            sx={{ width: boardWidth, height: boardWidth, borderRadius: '16px', overflow: 'hidden', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none' }}
+            sx={{ width: boardWidth, borderRadius: '16px', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none', flexShrink: 0 }}
           >
             {status === 'loading' ? (
               <Box sx={{ width: boardWidth, height: boardWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '16px' }}>
@@ -695,14 +689,15 @@ export default function BestMoveTrainer() {
               <Chessboard
                 position={fen}
                 onPieceDrop={onPieceDrop}
+                onPieceDragBegin={onPieceDragBegin}
                 onSquareClick={onSquareClick}
                 boardOrientation={position?.orientation || 'white'}
                 areDraggablePieces={status === 'playing'}
-                customBoardStyle={{ borderRadius: '16px' }}
+                customBoardStyle={{ borderRadius: '12px' }}
                 customDarkSquareStyle={{ backgroundColor: '#769656' }}
                 customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
                 customArrows={arrows}
-                customSquareStyles={{ ...moveHighlights, ...wrongSquares, ...correctSquares }}
+                customSquareStyles={{ ...checkSquare, ...moveHighlights, ...wrongSquares, ...correctSquares }}
                 boardWidth={boardWidth}
               />
             )}
