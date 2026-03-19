@@ -47,8 +47,16 @@ jobs:
           mkdir -p build-release
           cp android/app/build/outputs/apk/debug/app-debug.apk build-release/best-move-trainer-debug.apk
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v2
         with:
-          name: best-move-trainer-apk
-          path: build-release/best-move-trainer-debug.apk
+          tag_name: latest-apk
+          name: Latest Android Build
+          body: |
+            This release contains the latest debug APK for the Best Move Trainer.
+            Last updated: ${{ github.event.head_commit.timestamp }}
+          files: build-release/best-move-trainer-debug.apk
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
