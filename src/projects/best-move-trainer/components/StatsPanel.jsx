@@ -11,7 +11,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 const THEME_COLOR = '#7C3AED';
 
-export default function StatsPanel({ stats, onReset }) {
+export default function StatsPanel({ stats, onReset, isDark, T }) {
   // Build last-7-days chart data
   const last7 = useMemo(() => {
     const days = [];
@@ -39,24 +39,23 @@ export default function StatsPanel({ stats, onReset }) {
       sx={{
         p: 2.5,
         borderRadius: '16px',
-        background: '#fafaf9',
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-        mt: 0,
+        background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}`,
+        mt: 1,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
         <CalendarMonthIcon sx={{ color: THEME_COLOR, fontSize: 18 }} />
         <Typography
           variant="body2"
-          sx={{ color: '#1E1B4B', fontWeight: 700, letterSpacing: '-0.01em' }}
+          sx={{ color: T.textPrimary, fontWeight: 700, letterSpacing: '-0.01em' }}
         >
-          Progress Over Time
+          Daily Progress
         </Typography>
       </Box>
 
       {/* 7-day accuracy bar chart */}
-      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-end', mb: 2, height: 80 }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', mb: 3, height: 90 }}>
         {last7.map((day) => (
           <Box
             key={day.key}
@@ -65,7 +64,7 @@ export default function StatsPanel({ stats, onReset }) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 0.5,
+              gap: 0.75,
               height: '100%',
               justifyContent: 'flex-end',
             }}
@@ -73,13 +72,13 @@ export default function StatsPanel({ stats, onReset }) {
             <Box
               sx={{
                 width: '100%',
-                maxWidth: 30,
+                maxWidth: 28,
                 height: `${(day.attempts / maxAttempts) * 70}px`,
-                minHeight: day.attempts > 0 ? 8 : 2,
-                borderRadius: '4px 4px 0 0',
+                minHeight: day.attempts > 0 ? 8 : 4,
+                borderRadius: '6px 6px 0 0',
                 background:
                   day.attempts === 0
-                    ? 'rgba(0,0,0,0.08)'
+                    ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
                     : day.accuracy >= 70
                     ? 'linear-gradient(180deg, #22C55E, #16A34A)'
                     : day.accuracy >= 40
@@ -87,6 +86,9 @@ export default function StatsPanel({ stats, onReset }) {
                     : 'linear-gradient(180deg, #EF4444, #DC2626)',
                 position: 'relative',
                 transition: 'height 0.4s ease',
+                '&:hover': {
+                  opacity: 0.8
+                }
               }}
               title={
                 day.attempts > 0
@@ -98,7 +100,7 @@ export default function StatsPanel({ stats, onReset }) {
               variant="caption"
               sx={{
                 fontSize: '0.6rem',
-                color: '#94A3B8',
+                color: isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8',
                 fontWeight: 600,
                 textAlign: 'center',
               }}
@@ -110,59 +112,59 @@ export default function StatsPanel({ stats, onReset }) {
       </Box>
 
       {/* Legend */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
         {[
-          { color: '#22C55E', label: '≥70% accuracy' },
-          { color: '#F59E0B', label: '40–69%' },
-          { color: '#EF4444', label: '<40%' },
+          { color: '#22C55E', label: 'Good' },
+          { color: '#F59E0B', label: 'Average' },
+          { color: '#EF4444', label: 'Low' },
         ].map(({ color, label }) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: 1, background: color }} />
-            <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.65rem' }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#64748B', fontSize: '0.65rem', fontWeight: 600 }}>
               {label}
             </Typography>
           </Box>
         ))}
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(0,0,0,0.08)', mb: 2 }} />
+      <Divider sx={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', mb: 3 }} />
 
       {/* Summary row */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'space-around' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, justifyContent: 'space-around' }}>
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ color: THEME_COLOR, fontWeight: 800, letterSpacing: '-0.03em' }}>
+          <Typography variant="h5" sx={{ color: T.textPrimary, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
             {totalDaysPlayed}
           </Typography>
-          <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem' }}>
-            days played
+          <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', mt: 0.5, display: 'block' }}>
+            days active
           </Typography>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ color: THEME_COLOR, fontWeight: 800, letterSpacing: '-0.03em' }}>
+          <Typography variant="h5" sx={{ color: T.textPrimary, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
             {stats.totalAttempts}
           </Typography>
-          <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem' }}>
-            total puzzles
+          <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', mt: 0.5, display: 'block' }}>
+            solved
           </Typography>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ color: '#22C55E', fontWeight: 800, letterSpacing: '-0.03em' }}>
+          <Typography variant="h5" sx={{ color: '#22C55E', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
             {stats.totalAttempts > 0 ? `${Math.round((stats.totalCorrect / stats.totalAttempts) * 100)}%` : '—'}
           </Typography>
-          <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem' }}>
-            all-time accuracy
+          <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', mt: 0.5, display: 'block' }}>
+            accuracy
           </Typography>
         </Box>
       </Box>
 
       {/* Accuracy progress bar */}
       {stats.totalAttempts > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.7rem' }}>
-              Overall progress
+        <Box sx={{ mb: 3, px: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+            <Typography variant="caption" sx={{ color: T.textSecondary, fontSize: '0.7rem', fontWeight: 600 }}>
+              Total Progress
             </Typography>
-            <Typography variant="caption" sx={{ color: THEME_COLOR, fontWeight: 600, fontSize: '0.7rem' }}>
+            <Typography variant="caption" sx={{ color: THEME_COLOR, fontWeight: 700, fontSize: '0.7rem' }}>
               {stats.totalCorrect} / {stats.totalAttempts}
             </Typography>
           </Box>
@@ -170,12 +172,12 @@ export default function StatsPanel({ stats, onReset }) {
             variant="determinate"
             value={(stats.totalCorrect / stats.totalAttempts) * 100}
             sx={{
-              height: 6,
-              borderRadius: 6,
-              background: 'rgba(124,58,237,0.1)',
+              height: 10,
+              borderRadius: 10,
+              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(124,58,237,0.08)',
               '& .MuiLinearProgress-bar': {
-                background: 'linear-gradient(90deg, #7C3AED, #22C55E)',
-                borderRadius: 6,
+                background: `linear-gradient(90deg, ${THEME_COLOR}, #22C55E)`,
+                borderRadius: 10,
               },
             }}
           />
@@ -183,9 +185,10 @@ export default function StatsPanel({ stats, onReset }) {
       )}
 
       {/* Reset button */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
         <Button
           size="small"
+          variant="text"
           startIcon={<DeleteOutlineIcon sx={{ fontSize: 14 }} />}
           onClick={onReset}
           sx={{
@@ -193,10 +196,11 @@ export default function StatsPanel({ stats, onReset }) {
             fontSize: '0.75rem',
             textTransform: 'none',
             fontWeight: 600,
-            '&:hover': { background: 'rgba(239,68,68,0.08)' },
+            opacity: 0.7,
+            '&:hover': { background: 'rgba(239,68,68,0.08)', opacity: 1 },
           }}
         >
-          Reset stats
+          Reset Statistics
         </Button>
       </Box>
     </Box>
