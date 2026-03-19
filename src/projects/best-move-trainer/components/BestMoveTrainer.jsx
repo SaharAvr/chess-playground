@@ -407,7 +407,9 @@ export default function BestMoveTrainer() {
 
   // ── Execute move ──────────────────────────────────────────────────────────
   const executeMoveAttempt = useCallback((src, tgt) => {
-    if (!game || !position || status !== 'playing') return false;
+    if (!game || !position) return false;
+    // Allow exploring if correct or revealed
+    if (status !== 'playing' && status !== 'correct' && status !== 'revealed') return false;
 
     const gameCopy = new Chess(game.fen());
     let moveResult;
@@ -421,6 +423,16 @@ export default function BestMoveTrainer() {
     if (!moveResult) return false;
 
     const playedUci = `${src}${tgt}`;
+    
+    // Exploratory mode
+    if (status === 'correct' || status === 'revealed') {
+      if (moveResult.captured) playCapture(); else playMove();
+      setGame(gameCopy); setFen(gameCopy.fen());
+      setCorrectSquares({}); setWrongSquares({});
+      clearSelection();
+      return true;
+    }
+
     const isCorrect = position.topMoves.some(m => m.startsWith(playedUci));
 
     clearSelection();
@@ -461,7 +473,7 @@ export default function BestMoveTrainer() {
   // ── Drag / Click ──────────────────────────────────────────────────────────
   // onPieceDragBegin: fires reliably from react-chessboard when dragging starts.
   const onPieceDragBegin = useCallback((_piece, sourceSquare) => {
-    if (status !== 'playing') return;
+    if (status !== 'playing' && status !== 'correct' && status !== 'revealed') return;
     setSelectedSquare(sourceSquare);
     setMoveHighlights(getMoveHighlights(sourceSquare));
     setWrongSquares({}); setCorrectSquares({});
@@ -473,7 +485,8 @@ export default function BestMoveTrainer() {
   }, [executeMoveAttempt, clearSelection]);
 
   const onSquareClick = useCallback((square) => {
-    if (!game || status !== 'playing') return;
+    if (!game) return;
+    if (status !== 'playing' && status !== 'correct' && status !== 'revealed') return;
 
     // Use game.turn() directly — always in sync with the actual board position
     const playerColor = game.turn(); // 'w' or 'b'
@@ -726,7 +739,7 @@ export default function BestMoveTrainer() {
                   onPieceDragBegin={onPieceDragBegin}
                   onSquareClick={onSquareClick}
                   boardOrientation={position?.orientation || 'white'}
-                  areDraggablePieces={status === 'playing'}
+                  areDraggablePieces={status === 'playing' || status === 'correct' || status === 'revealed'}
                   customBoardStyle={{ borderRadius: '12px' }}
                   customDarkSquareStyle={{ backgroundColor: '#769656' }}
                   customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
