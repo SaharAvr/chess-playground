@@ -195,7 +195,6 @@ export default function BestMoveTrainer() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const [boardWidth, setBoardWidth] = useState(440);
-  const boardContainerRef = React.useRef(null);
 
 
 
@@ -286,14 +285,20 @@ export default function BestMoveTrainer() {
 
   // ── Responsive Board Width ────────────────────────────────────────────────
   useEffect(() => {
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        if (w > 0) setBoardWidth(Math.min(440, w));
+    const calcWidth = () => {
+      if (window.innerWidth < 900) {
+        setBoardWidth(window.innerWidth - 32); 
+      } else {
+        // Desktop: fill available height to perfectly fit screen
+        // We give 80px total vertical padding (40px top, 40px bottom)
+        const availableHeight = window.innerHeight - 80;
+        const maxWidth = (window.innerWidth - 120) * 0.6; // account for gap and right panel
+        setBoardWidth(Math.max(400, Math.min(availableHeight, maxWidth, 1000))); 
       }
-    });
-    if (boardContainerRef.current) observer.observe(boardContainerRef.current);
-    return () => observer.disconnect();
+    };
+    calcWidth();
+    window.addEventListener('resize', calcWidth);
+    return () => window.removeEventListener('resize', calcWidth);
   }, []);
 
   // Handle mobile back button for Settings Modal
@@ -586,100 +591,134 @@ export default function BestMoveTrainer() {
   const failureCount = Object.keys(failures).filter(k => failures[k].fails > 0).length;
   const posStats = position ? failures[fenKey(position.fen)] : null;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <Box sx={{ minHeight: '100vh', background: T.bg, transition: 'background 0.5s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', pt: { xs: 1.5, md: 3 }, pb: { xs: 2, md: 6 }, px: { xs: 0, md: 2 } }}>
-
-      {/* ── Header ── */}
-      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: { xs: 1.5, md: 3 }, flexWrap: 'wrap', gap: 1.5, px: { xs: 1.5, md: 0 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-          <Box sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 }, borderRadius: '10px', background: `linear-gradient(135deg, ${THEME_COLOR}, #9F67FA)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 20px ${THEME_COLOR}40`, flexShrink: 0 }}>
-            <EmojiEventsIcon sx={{ color: '#fff', fontSize: { xs: 18, md: 22 } }} />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6" sx={{ color: T.textPrimary, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: { xs: '1rem', md: '1.25rem' } }}>
-              Best Move Trainer
-            </Typography>
-            <Typography variant="caption" sx={{ color: T.textSecondary, display: { xs: 'none', sm: 'block' }, lineHeight: 1.2, mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {mode === 'practice' ? '🔁 Practice mode — your failures' : 'Real games · Stockfish analysis'}
-            </Typography>
-          </Box>
+  // ── Render Helpers ───────────────────────────────────────────────────────
+  const renderHeader = (displaySx) => (
+    <Box sx={{ display: displaySx, width: '100%', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1.5, md: 0 }, flexWrap: 'wrap', gap: 1, px: { xs: 1.5, md: 0 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <Box sx={{ width: { xs: 30, md: 36 }, height: { xs: 30, md: 36 }, borderRadius: '10px', background: `linear-gradient(135deg, ${THEME_COLOR}, #9F67FA)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 15px ${THEME_COLOR}30`, flexShrink: 0 }}>
+          <EmojiEventsIcon sx={{ color: '#fff', fontSize: { xs: 16, md: 20 } }} />
         </Box>
-
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          {stats.streak > 1 && (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-              <Chip icon={<TrendingUpIcon sx={{ fontSize: 14 }} />} label={`${stats.streak} streak`} size="small"
-                sx={{ background: 'linear-gradient(90deg, #F59E0B, #EF4444)', color: '#fff', fontWeight: 600, fontSize: '0.75rem', '& .MuiChip-icon': { color: '#fff' } }} />
-            </motion.div>
-          )}
-
-          {/* Mode toggle — only show when there are failures or already in practice */}
-          {(failureCount > 0 || mode === 'practice') && (
-          <Tooltip title={mode === 'normal' ? `Practice failures (${failureCount})` : 'Back to normal mode'}>
-            <span>
-              <IconButton
-                onClick={() => switchMode(mode === 'normal' ? 'practice' : 'normal')}
-                sx={{
-                  color: mode === 'practice' ? '#F59E0B' : T.iconColor,
-                  border: `1.5px solid ${mode === 'practice' ? '#F59E0B' : T.iconBorder}`,
-                  borderRadius: '10px', p: '6px', transition: 'all 0.2s',
-                }}
-              >
-                <Badge badgeContent={failureCount > 0 ? failureCount : null} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem' } }}>
-                  {mode === 'practice' ? <FlashOnIcon fontSize="small" /> : <SchoolIcon fontSize="small" />}
-                </Badge>
-              </IconButton>
-            </span>
-          </Tooltip>
-          )}
-
-          <Tooltip title="Stats">
-            <IconButton onClick={() => setShowStats(v => !v)}
-              sx={{ color: showStats ? THEME_COLOR : T.iconColor, border: `1.5px solid ${showStats ? THEME_COLOR : T.iconBorder}`, borderRadius: '10px', p: '6px', transition: 'all 0.2s' }}>
-              <BarChartIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Settings">
-            <IconButton onClick={() => setShowSettings(true)}
-              sx={{ color: showSettings ? THEME_COLOR : T.iconColor, border: `1.5px solid ${showSettings ? THEME_COLOR : T.iconBorder}`, borderRadius: '10px', p: '6px', transition: 'all 0.2s', ml: 0.5 }}>
-              <SettingsIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ color: T.textPrimary, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: { xs: '0.9rem', md: '1.2rem' } }}>
+            Best Move Trainer
+          </Typography>
+          <Typography variant="caption" sx={{ color: T.textSecondary, display: { xs: 'none', sm: 'block' }, lineHeight: 1.2, mt: 0.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem' }}>
+            {mode === 'practice' ? '🔁 Practice failures' : 'Real games · Stockfish'}
+          </Typography>
         </Box>
       </Box>
 
-      {/* ── Main ── */}
-      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', gap: { xs: 1.5, md: 3 }, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'flex-start' }, px: { xs: 1.5, md: 0 } }}>
+      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+        {stats.streak > 1 && (
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+            <Chip icon={<TrendingUpIcon sx={{ fontSize: 13 }} />} label={`${stats.streak}`} size="small"
+              sx={{ background: 'linear-gradient(90deg, #F59E0B, #EF4444)', color: '#fff', fontWeight: 600, fontSize: '0.7rem', height: 20, '& .MuiChip-icon': { color: '#fff' } }} />
+          </motion.div>
+        )}
 
-        {/* ── Board column ── */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, flex: { xs: '1 1 auto', md: '0 0 auto' }, width: { xs: '100%', md: 'auto' } }}>
+        {(failureCount > 0 || mode === 'practice') && (
+        <Tooltip title={mode === 'normal' ? `Practice failures (${failureCount})` : 'Back to normal mode'}>
+          <span>
+            <IconButton onClick={() => switchMode(mode === 'normal' ? 'practice' : 'normal')} sx={{ color: mode === 'practice' ? '#F59E0B' : T.iconColor, border: `1.5px solid ${mode === 'practice' ? '#F59E0B' : T.iconBorder}`, borderRadius: '8px', p: '6px', transition: 'all 0.2s' }}>
+              <Badge badgeContent={failureCount > 0 ? failureCount : null} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.55rem', height: 14, minWidth: 14 } }}>
+                {mode === 'practice' ? <FlashOnIcon sx={{ fontSize: 18 }} /> : <SchoolIcon sx={{ fontSize: 18 }} />}
+              </Badge>
+            </IconButton>
+          </span>
+        </Tooltip>
+        )}
 
-          {/* Sizing probe — this is the element we observe to get board width */}
-          <Box ref={boardContainerRef} sx={{ width: '100%', height: 0 }} />
+        <Tooltip title="Stats">
+          <IconButton onClick={() => setShowStats(v => !v)} sx={{ color: showStats ? THEME_COLOR : T.iconColor, border: `1.5px solid ${showStats ? THEME_COLOR : T.iconBorder}`, borderRadius: '8px', p: '6px', transition: 'all 0.2s' }}>
+            <BarChartIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Settings">
+          <IconButton onClick={() => setSettingsOpen(true)} sx={{ color: T.iconColor, border: `1.5px solid ${T.iconBorder}`, borderRadius: '8px', p: '6px', transition: 'all 0.2s' }}>
+            <SettingsIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
 
-          {/* meta row */}
-          {position && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 0.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: isDark ? '#1E293B' : '#e2e8f0', border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}` }} />
-                <Typography variant="body2" sx={{ color: T.textSecondary, fontWeight: 500 }}>
-                  {position.orientation === 'white' ? 'White' : 'Black'} to move
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', minWidth: 0 }}>
-                {evalDisp && <Chip label={evalDisp} size="small" sx={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.25)', color: THEME_COLOR, fontWeight: 600, fontSize: '0.75rem' }} />}
-                <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{position.username}</Typography>
-              </Box>
-            </Box>
-          )}
+  const renderMeta = (displaySx) => position && (
+    <Box sx={{ display: displaySx, justifyContent: 'space-between', alignItems: 'center', px: 0.5, gap: '16px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        <Box sx={{ width: 10, height: 10, borderRadius: '50%', background: isDark ? '#1E293B' : '#e2e8f0', border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}` }} />
+        <Typography variant="body2" sx={{ color: T.textSecondary, fontWeight: 700, fontSize: { md: '0.85rem' } }}>
+          {position.orientation === 'white' ? 'White' : 'Black'} to move
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', minWidth: 0 }}>
+        {evalDisp && <Chip label={evalDisp} size="small" sx={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)', color: THEME_COLOR, fontWeight: 700, fontSize: '0.7rem', height: 20 }} />}
+        <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: { xs: '0.65rem', md: '0.75rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{position.username}</Typography>
+      </Box>
+    </Box>
+  );
 
-          {/* Board */}
-          <Box
-            sx={{ width: boardWidth, borderRadius: '16px', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none', flexShrink: 0 }}
-          >
+  const renderTools = (displaySx) => (
+    <Box sx={{ display: displaySx, gap: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
+      {[
+        { label: 'Hint', icon: <LightbulbIcon sx={{ fontSize: 18 }} />, color: '#D97706', action: showHint, disabled: status !== 'playing' || hintUsed },
+        { label: 'Reveal', icon: <CancelIcon sx={{ fontSize: 18 }} />, color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
+        { label: 'Skip', icon: <SkipNextIcon sx={{ fontSize: 18 }} />, color: '#64748B', action: skipPosition, disabled: false },
+        { label: 'New', icon: <RefreshIcon sx={{ fontSize: 18 }} />, color: THEME_COLOR, action: () => loadNewPosition(mode), disabled: false },
+      ].map(({ label, icon, color, action, disabled }) => (
+        <Tooltip title={label} key={label}>
+          <span>
+            <IconButton onClick={action} disabled={disabled} sx={{ color: color, background: `${color}12`, border: `1px solid ${color}25`, borderRadius: '10px', p: '8px', transition: 'all 0.2s', '&:hover': { background: `${color}18`, transform: 'translateY(-1px)' }, '&.Mui-disabled': { opacity: 0.3 } }}>
+              {icon}
+            </IconButton>
+          </span>
+        </Tooltip>
+      ))}
+    </Box>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <Box sx={{ 
+      height: { xs: 'auto', md: '100vh' }, 
+      minHeight: { xs: '100vh', md: 'auto' },
+      background: T.bg, 
+      transition: 'background 0.5s ease', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      pt: { xs: 1.5, md: 0 }, 
+      pb: { xs: 2, md: 0 }, 
+      px: { xs: 1.5, md: 4 },
+      overflow: { xs: 'auto', md: 'hidden' }
+    }}>
+
+      {/* Mobile Top Header */}
+      {renderHeader({ xs: 'flex', md: 'none' })}
+
+      {/* ── Main Wrapper ── */}
+      <Box sx={{ 
+        width: '100%', 
+        maxWidth: 1600, 
+        height: { xs: 'auto', md: '100%' },
+        display: 'flex', 
+        gap: { xs: 2, md: 6, lg: 10 }, 
+        flexDirection: { xs: 'column', md: 'row' }, 
+        alignItems: { xs: 'stretch', md: 'center' }, 
+        px: { xs: 0, md: 0 }, 
+        justifyContent: 'center',
+        py: { xs: 1, md: 4 }
+      }}>
+
+        {/* ── Left Column (Board Only) ── */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: '0 0 auto', width: { xs: '100%', md: 'auto' }, alignItems: 'center' }}>
+          {/* Mobile Meta UI (for small screens) */}
+          {renderMeta({ xs: 'flex', md: 'none' })}
+
+          {/* Core Board */}
+          <Box sx={{ width: boardWidth, borderRadius: '16px', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'all 0.3s ease', flexShrink: 0 }}>
             {status === 'loading' ? (
-              <Box sx={{ width: boardWidth, height: boardWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '16px' }}>
+              <Box sx={{ width: boardWidth, height: boardWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '12px' }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <CircularProgress size={32} sx={{ color: THEME_COLOR, mb: 1.5 }} />
                   <Typography variant="body2" sx={{ color: T.textTertiary }}>Loading position…</Typography>
@@ -703,119 +742,124 @@ export default function BestMoveTrainer() {
             )}
           </Box>
 
-          {/* Buttons */}
-          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-            {[
-              { label: 'Hint', icon: <LightbulbIcon fontSize="small" />, color: '#D97706', action: showHint, disabled: status !== 'playing' || hintUsed },
-              { label: 'Reveal', icon: <CancelIcon fontSize="small" />, color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
-              { label: 'Skip', icon: <SkipNextIcon fontSize="small" />, color: '#64748B', action: skipPosition, disabled: false },
-              { label: 'New', icon: <RefreshIcon fontSize="small" />, color: THEME_COLOR, action: () => loadNewPosition(mode), disabled: false },
-            ].map(({ label, icon, color, action, disabled }) => (
-              <Tooltip title={label} key={label}>
-                <span>
-                  <IconButton onClick={action} disabled={disabled}
-                    sx={{ color, border: `1.5px solid ${color}40`, borderRadius: '10px', p: '8px', '&:hover': { background: `${color}12`, borderColor: color }, '&.Mui-disabled': { opacity: 0.3 } }}>
-                    {icon}
-                  </IconButton>
-                </span>
-              </Tooltip>
-            ))}
-          </Box>
+          {/* Mobile Tools (below board) */}
+          {renderTools({ xs: 'flex', md: 'none' })}
         </Box>
 
-        {/* ── Right column ── */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, minWidth: 0, width: { xs: '100%', md: 'auto' } }}>
+        {/* ── Right Column (Everything Else) ── */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: { xs: 2, md: 3 }, 
+          flex: 1, 
+          minWidth: 0, 
+          maxWidth: { xs: '100%', md: 540 },
+          height: { xs: 'auto', md: '100%' },
+          overflowY: { xs: 'visible', md: 'auto' },
+          pr: { xs: 0, md: 3 }, 
+          py: { xs: 1, md: 3 },
+          '&::-webkit-scrollbar': { width: '8px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: '10px' },
+        }}>
+          {/* Header */}
+          {renderHeader({ xs: 'none', md: 'flex' })}
 
-          {/* Feedback card */}
-          <AnimatePresence mode="wait">
-            {status === 'loading' ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.cardBg, border: `1px solid ${T.cardBorder}` }}>
-                  <Typography variant="body1" sx={{ color: T.textTertiary, fontWeight: 600 }}>Analyzing position…</Typography>
-                  <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, opacity: 0.7, display: { xs: 'none', sm: 'block' } }}>
-                    {mode === 'practice' ? 'Loading your hardest position' : 'Fetching a real game from Lichess'}
-                  </Typography>
-                </Box>
-              </motion.div>
+          {/* Desktop Tools & Meta */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', gap: 2 }}>
+            {renderMeta('flex')}
+            {renderTools('flex')}
+            <Divider sx={{ borderColor: T.divider }} />
+          </Box>
 
-            ) : status === 'correct' ? (
-              <motion.div key="correct" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.correctBg, border: `1px solid ${T.correctBorder}` }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <CheckCircleIcon sx={{ color: isDark ? '#22C55E' : '#16A34A', fontSize: { xs: 20, md: 26 } }} />
-                    <Typography variant="h6" sx={{ color: T.correctTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>
-                      {wrongAttempts > 0 ? `Found it! (${wrongAttempts} wrong)` : hintUsed ? 'Correct (hint used)' : 'Best move! ✓'}
+          {/* Feedback Section */}
+          <Box sx={{ flexShrink: 0 }}>
+            <AnimatePresence mode="wait">
+              {status === 'loading' ? (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.cardBg, border: `1px solid ${T.cardBorder}` }}>
+                    <Typography variant="body1" sx={{ color: T.textTertiary, fontWeight: 600 }}>Analyzing position…</Typography>
+                    <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, opacity: 0.7, display: { xs: 'none', sm: 'block' } }}>
+                      {mode === 'practice' ? 'Loading your hardest position' : 'Fetching a real game from Lichess'}
                     </Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ color: T.correctSub, mb: 2 }}>
-                    <strong>{feedback?.san}</strong> matches the engine's top choice.
-                  </Typography>
-                  <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
-                  <NextBtn onClick={() => loadNewPosition(mode)} />
-                </Box>
-              </motion.div>
-
-            ) : status === 'revealed' ? (
-              <motion.div key="revealed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.wrongBg, border: `1px solid ${T.wrongBorder}` }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <LightbulbIcon sx={{ color: isDark ? '#EF4444' : '#DC2626', fontSize: { xs: 20, md: 26 } }} />
-                    <Typography variant="h6" sx={{ color: T.wrongTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>Answer Revealed</Typography>
+                </motion.div>
+              ) : status === 'correct' ? (
+                <motion.div key="correct" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.correctBg, border: `1px solid ${T.correctBorder}` }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                      <CheckCircleIcon sx={{ color: isDark ? '#22C55E' : '#16A34A', fontSize: { xs: 20, md: 26 } }} />
+                      <Typography variant="h6" sx={{ color: T.correctTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>
+                        {wrongAttempts > 0 ? `Found it! (${wrongAttempts} wrong)` : hintUsed ? 'Correct (hint used)' : 'Best move! ✓'}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ color: T.correctSub, mb: 2 }}>
+                      <strong>{feedback?.san}</strong> matches the engine's top choice.
+                    </Typography>
+                    <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
+                    <NextBtn onClick={() => loadNewPosition(mode)} />
                   </Box>
-                  <Typography variant="body2" sx={{ color: T.wrongSub, mb: 2 }}>
-                    Best move: <strong>{feedback?.best}</strong>. Saved to practice.
-                  </Typography>
-                  <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
-                  <NextBtn onClick={() => loadNewPosition(mode)} />
-                </Box>
-              </motion.div>
-
-            ) : (
-              /* playing — show hint/retry feedback */
-              <motion.div key="playing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <AnimatePresence mode="wait">
-                  {feedback?.type === 'retry' ? (
-                    <motion.div key="retry" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                      <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-                          <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: { xs: 18, md: 24 } }} />
-                          <Typography variant="h6" sx={{ color: T.retryTitle, fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
-                            Not quite — keep trying!
+                </motion.div>
+              ) : status === 'revealed' ? (
+                <motion.div key="revealed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.wrongBg, border: `1px solid ${T.wrongBorder}` }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                      <LightbulbIcon sx={{ color: isDark ? '#EF4444' : '#DC2626', fontSize: { xs: 20, md: 26 } }} />
+                      <Typography variant="h6" sx={{ color: T.wrongTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>Answer Revealed</Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ color: T.wrongSub, mb: 2 }}>
+                      Best move: <strong>{feedback?.best}</strong>. Saved to practice.
+                    </Typography>
+                    <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
+                    <NextBtn onClick={() => loadNewPosition(mode)} />
+                  </Box>
+                </motion.div>
+              ) : (
+                <motion.div key="playing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <AnimatePresence mode="wait">
+                    {feedback?.type === 'retry' ? (
+                      <motion.div key="retry" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                        <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                            <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: { xs: 18, md: 24 } }} />
+                            <Typography variant="h6" sx={{ color: T.retryTitle, fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
+                              Not quite — keep trying!
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ color: T.retrySub }}>
+                            Attempt #{feedback.attempts} · Use a hint if you're stuck.
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: T.retrySub }}>
-                          Attempt #{feedback.attempts} · Use a hint if you're stuck.
-                        </Typography>
-                      </Box>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="prompt" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                      <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                        <Typography variant="body1" sx={{ color: T.playTitle, fontWeight: 600, mb: 0.5 }}>
-                          {mode === 'practice' && posStats
-                            ? `Practice — ${posStats.fails}✗ / ${posStats.successes}✓`
-                            : 'Find the best move'}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: T.playSub }}>
-                          {position?.orientation === 'white' ? 'White' : 'Black'} to play — find the move Stockfish considers best.
-                          {mode === 'practice' && ' This is one of your previously missed positions.'}
-                        </Typography>
-                      </Box>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="prompt" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                        <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                          <Typography variant="body1" sx={{ color: T.playTitle, fontWeight: 600, mb: 0.5 }}>
+                            {mode === 'practice' && posStats
+                              ? `Practice — ${posStats.fails}✗ / ${posStats.successes}✓`
+                              : 'Find the best move'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: T.playSub }}>
+                            {position?.orientation === 'white' ? 'White' : 'Black'} to play — find the move Stockfish considers best.
+                            {mode === 'practice' && ' This is one of your previously missed positions.'}
+                          </Typography>
+                        </Box>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Box>
 
           <Divider sx={{ borderColor: T.divider }} />
 
           {/* Stat cards — always visible on desktop, behind toggle on mobile */}
-          <Box sx={{ display: { xs: showStats ? 'grid' : 'none', md: 'grid' }, gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <StatCard label="Today's accuracy" value={`${todayAcc}%`} sub={`${todayStats.correct}/${todayStats.attempts}`} color="#22C55E" dark={isDark} />
-            <StatCard label="All-time accuracy" value={`${accuracy}%`} sub={`${stats.totalCorrect}/${stats.totalAttempts}`} color={THEME_COLOR} dark={isDark} />
-            <StatCard label="Current streak" value={stats.streak} sub="in a row" color="#F59E0B" dark={isDark} />
-            <StatCard label="Failed positions" value={failureCount} sub="saved for review" color="#EF4444" dark={isDark} />
+          <Box sx={{ display: { xs: showStats ? 'grid' : 'none', md: 'grid' }, gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 1 }}>
+            <StatCard label="Accuracy" value={`${todayAcc}%`} sub={`${todayStats.correct}/${todayStats.attempts}`} color="#22C55E" dark={isDark} />
+            <StatCard label="All-time" value={`${accuracy}%`} sub={`${stats.totalCorrect}/${stats.totalAttempts}`} color={THEME_COLOR} dark={isDark} />
+            <StatCard label="Streak" value={stats.streak} sub="current" color="#F59E0B" dark={isDark} />
+            <StatCard label="Failed" value={failureCount} sub="reviews" color="#EF4444" dark={isDark} />
           </Box>
 
           {/* Full stats panel */}
@@ -828,6 +872,7 @@ export default function BestMoveTrainer() {
           </AnimatePresence>
         </Box>
       </Box>
+
 
       {/* ── Settings Dialog ── */}
       <Dialog open={showSettings} onClose={() => setShowSettings(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px', background: isDark ? '#160B2A' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none' } }}>
@@ -901,17 +946,17 @@ export default function BestMoveTrainer() {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color, dark }) {
   return (
-    <Box sx={{ p: 2, borderRadius: '12px', background: dark ? 'rgba(255,255,255,0.04)' : '#ffffff', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`, boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.04)', transition: 'background 0.4s, border-color 0.4s' }}>
-      <Typography variant="caption" sx={{ color: dark ? '#64748B' : '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.65rem' }}>{label}</Typography>
-      <Typography variant="h5" sx={{ color, fontWeight: 800, letterSpacing: '-0.03em', mt: 0.25, lineHeight: 1 }}>{value}</Typography>
-      <Typography variant="caption" sx={{ color: dark ? '#64748B' : '#94A3B8', fontSize: '0.7rem' }}>{sub}</Typography>
+    <Box sx={{ p: 1, borderRadius: '8px', background: dark ? 'rgba(255,255,255,0.04)' : '#ffffff', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`, textAlign: 'center' }}>
+      <Typography variant="h6" sx={{ color, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, fontSize: '1.2rem' }}>{value}</Typography>
+      <Typography sx={{ color: dark ? '#64748B' : '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.55rem', mt: 0.5, lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</Typography>
+      <Typography variant="caption" sx={{ color: dark ? '#475569' : '#94A3B8', fontSize: '0.55rem', fontWeight: 500, display: 'block', mt: 0.25 }}>{sub}</Typography>
     </Box>
   );
 }
 
 function NextBtn({ onClick, label = 'Next Position →' }) {
   return (
-    <Box component="button" onClick={onClick} sx={{ display: 'block', width: '100%', py: 1.5, px: 3, border: 'none', borderRadius: '10px', background: 'linear-gradient(90deg, #7C3AED, #9F67FA)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', letterSpacing: '-0.01em', boxShadow: '0 4px 14px rgba(124,58,237,0.25)', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 6px 20px rgba(124,58,237,0.35)' } }}>
+    <Box component="button" onClick={onClick} sx={{ display: 'block', width: '100%', py: 1.25, px: 3, border: 'none', borderRadius: '10px', background: 'linear-gradient(90deg, #7C3AED, #9F67FA)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', letterSpacing: '-0.01em', boxShadow: '0 4px 14px rgba(124,58,237,0.2)', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 6px 20px rgba(124,58,237,0.3)' } }}>
       {label}
     </Box>
   );
@@ -920,8 +965,8 @@ function NextBtn({ onClick, label = 'Next Position →' }) {
 function ExplanationBox({ status, explanation, T, isDark, THEME_COLOR, onAskAI }) {
   if (status === 'idle') {
     return (
-      <Box sx={{ mb: 2.5 }}>
-        <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
+      <Box sx={{ mb: 2 }}>
+        <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem', py: 0.5, '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
           Ask AI Coach why this is best
         </Button>
       </Box>
@@ -929,27 +974,27 @@ function ExplanationBox({ status, explanation, T, isDark, THEME_COLOR, onAskAI }
   }
   
   return (
-    <Box sx={{ mt: 2, mb: 2.5, p: 2, borderRadius: '12px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(124,58,237,0.03)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(124,58,237,0.15)'}` }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-        <AutoAwesomeIcon sx={{ fontSize: 16, color: THEME_COLOR }} />
-        <Typography variant="caption" sx={{ color: THEME_COLOR, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coach Explanation</Typography>
+    <Box sx={{ mt: 1.5, mb: 2, p: 1.5, borderRadius: '10px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(124,58,237,0.03)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(124,58,237,0.12)'}` }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+        <AutoAwesomeIcon sx={{ fontSize: 13, color: THEME_COLOR }} />
+        <Typography variant="caption" sx={{ color: THEME_COLOR, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>Coach Explanation</Typography>
       </Box>
       {status === 'loading' ? (
-         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-           <CircularProgress size={14} sx={{ color: T.textTertiary }} />
-           <Typography variant="body2" sx={{ color: T.textTertiary, fontStyle: 'italic' }}>Analyzing position...</Typography>
+         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+           <CircularProgress size={12} sx={{ color: T.textTertiary }} />
+           <Typography variant="body2" sx={{ color: T.textTertiary, fontStyle: 'italic', fontSize: '0.8rem' }}>Analyzing...</Typography>
          </Box>
       ) : explanation ? (
-        <Typography variant="body2" sx={{ color: T.textPrimary, mt: 0.5, lineHeight: 1.5 }}>
+        <Typography variant="body2" sx={{ color: T.textPrimary, mt: 0.5, lineHeight: 1.45, fontSize: '0.85rem' }}>
           {explanation}
         </Typography>
       ) : (
         <Box>
-          <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, fontStyle: 'italic', mb: 1 }}>
-            No API key found, or API call failed. Add a Gemini key in Settings.
+          <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, fontStyle: 'italic', mb: 1, fontSize: '0.8rem' }}>
+            No API key found. Add a free Gemini key in Settings.
           </Typography>
-          <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
-            Try Ask AI Again
+          <Button onClick={onAskAI} variant="outlined" size="small" startIcon={<AutoAwesomeIcon sx={{ fontSize: 14 }} />} sx={{ color: THEME_COLOR, borderColor: `${THEME_COLOR}50`, textTransform: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem', '&:hover': { background: `${THEME_COLOR}10`, borderColor: THEME_COLOR } }}>
+            Try Again
           </Button>
         </Box>
       )}
