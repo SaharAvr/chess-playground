@@ -89,6 +89,8 @@ function Header() {
         backdropFilter: 'blur(8px)',
         borderBottom: '1px solid',
         borderColor: 'divider',
+        display: !isHome ? { xs: 'none', sm: 'block' } : 'block',
+        ...(location.pathname === '/best-move-trainer' && { display: 'none' }),
       }}
     >
       <Toolbar>

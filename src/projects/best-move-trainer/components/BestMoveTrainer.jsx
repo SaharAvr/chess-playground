@@ -194,6 +194,8 @@ export default function BestMoveTrainer() {
   const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [boardWidth, setBoardWidth] = useState(440);
+  const boardContainerRef = React.useRef(null);
 
   // Refs for drag/click coordination
   // onPieceDragBegin fires on mousedown; onSquareClick fires on mouseup for the same gesture.
@@ -285,6 +287,18 @@ export default function BestMoveTrainer() {
   }, [mode]); // eslint-disable-line
 
   useEffect(() => { loadNewPosition(mode); }, []); // eslint-disable-line
+
+  // ── Responsive Board Width ────────────────────────────────────────────────
+  useEffect(() => {
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        setBoardWidth(Math.min(440, w));
+      }
+    });
+    if (boardContainerRef.current) observer.observe(boardContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Handle mobile back button for Settings Modal
   useEffect(() => {
@@ -582,25 +596,25 @@ export default function BestMoveTrainer() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ minHeight: '100vh', background: T.bg, transition: 'background 0.5s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', pt: { xs: 2, md: 3 }, pb: 6, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', background: T.bg, transition: 'background 0.5s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', pt: { xs: 1.5, md: 3 }, pb: { xs: 2, md: 6 }, px: { xs: 0, md: 2 } }}>
 
       {/* ── Header ── */}
-      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box sx={{ width: 40, height: 40, borderRadius: '12px', background: `linear-gradient(135deg, ${THEME_COLOR}, #9F67FA)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 20px ${THEME_COLOR}40` }}>
-            <EmojiEventsIcon sx={{ color: '#fff', fontSize: 22 }} />
+      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: { xs: 1.5, md: 3 }, flexWrap: 'wrap', gap: 1.5, px: { xs: 1.5, md: 0 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+          <Box sx={{ width: { xs: 32, md: 40 }, height: { xs: 32, md: 40 }, borderRadius: '10px', background: `linear-gradient(135deg, ${THEME_COLOR}, #9F67FA)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 20px ${THEME_COLOR}40`, flexShrink: 0 }}>
+            <EmojiEventsIcon sx={{ color: '#fff', fontSize: { xs: 18, md: 22 } }} />
           </Box>
-          <Box>
-            <Typography variant="h6" sx={{ color: T.textPrimary, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" sx={{ color: T.textPrimary, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: { xs: '1rem', md: '1.25rem' } }}>
               Best Move Trainer
             </Typography>
-            <Typography variant="caption" sx={{ color: T.textSecondary }}>
-              {mode === 'practice' ? '🔁 Practice mode — your hardest positions' : 'Real games · Stockfish analysis'}
+            <Typography variant="caption" sx={{ color: T.textSecondary, display: { xs: 'none', sm: 'block' }, lineHeight: 1.2, mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {mode === 'practice' ? '🔁 Practice mode — your failures' : 'Real games · Stockfish analysis'}
             </Typography>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           {stats.streak > 1 && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
               <Chip icon={<TrendingUpIcon sx={{ fontSize: 14 }} />} label={`${stats.streak} streak`} size="small"
@@ -608,17 +622,16 @@ export default function BestMoveTrainer() {
             </motion.div>
           )}
 
-          {/* Mode toggle */}
+          {/* Mode toggle — only show when there are failures or already in practice */}
+          {(failureCount > 0 || mode === 'practice') && (
           <Tooltip title={mode === 'normal' ? `Practice failures (${failureCount})` : 'Back to normal mode'}>
             <span>
               <IconButton
                 onClick={() => switchMode(mode === 'normal' ? 'practice' : 'normal')}
-                disabled={mode === 'normal' && failureCount === 0}
                 sx={{
                   color: mode === 'practice' ? '#F59E0B' : T.iconColor,
                   border: `1.5px solid ${mode === 'practice' ? '#F59E0B' : T.iconBorder}`,
                   borderRadius: '10px', p: '6px', transition: 'all 0.2s',
-                  '&.Mui-disabled': { opacity: 0.3 },
                 }}
               >
                 <Badge badgeContent={failureCount > 0 ? failureCount : null} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem' } }}>
@@ -627,6 +640,7 @@ export default function BestMoveTrainer() {
               </IconButton>
             </span>
           </Tooltip>
+          )}
 
           <Tooltip title="Stats">
             <IconButton onClick={() => setShowStats(v => !v)}
@@ -644,23 +658,23 @@ export default function BestMoveTrainer() {
       </Box>
 
       {/* ── Main ── */}
-      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'center', md: 'flex-start' } }}>
+      <Box sx={{ width: '100%', maxWidth: 1100, display: 'flex', gap: { xs: 1.5, md: 3 }, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'flex-start' }, px: { xs: 1.5, md: 0 } }}>
 
         {/* ── Board column ── */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '0 0 auto' }}>
+        <Box ref={boardContainerRef} sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, flex: { xs: '1 1 auto', md: '0 0 auto' }, width: { xs: '100%', md: 'auto' } }}>
 
           {/* meta row */}
           {position && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 0.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: isDark ? '#1E293B' : '#e2e8f0', border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}` }} />
                 <Typography variant="body2" sx={{ color: T.textSecondary, fontWeight: 500 }}>
                   {position.orientation === 'white' ? 'White' : 'Black'} to move
                 </Typography>
               </Box>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', minWidth: 0 }}>
                 {evalDisp && <Chip label={evalDisp} size="small" sx={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.25)', color: THEME_COLOR, fontWeight: 600, fontSize: '0.75rem' }} />}
-                <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.7rem' }}>{position.username}</Typography>
+                <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{position.username}</Typography>
               </Box>
             </Box>
           )}
@@ -668,10 +682,10 @@ export default function BestMoveTrainer() {
           {/* Board */}
           <Box
             onPointerDown={handlePointerDown}
-            sx={{ borderRadius: '16px', overflow: 'hidden', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none' }}
+            sx={{ width: boardWidth, height: boardWidth, borderRadius: '16px', overflow: 'hidden', boxShadow: T.boardShadow, border: `1px solid ${T.boardBorder}`, position: 'relative', transition: 'box-shadow 0.5s ease', touchAction: 'none' }}
           >
             {status === 'loading' ? (
-              <Box sx={{ width: 440, height: 440, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '16px' }}>
+              <Box sx={{ width: boardWidth, height: boardWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.loadingBg, borderRadius: '16px' }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <CircularProgress size={32} sx={{ color: THEME_COLOR, mb: 1.5 }} />
                   <Typography variant="body2" sx={{ color: T.textTertiary }}>Loading position…</Typography>
@@ -689,7 +703,7 @@ export default function BestMoveTrainer() {
                 customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
                 customArrows={arrows}
                 customSquareStyles={{ ...moveHighlights, ...wrongSquares, ...correctSquares }}
-                boardWidth={440}
+                boardWidth={boardWidth}
               />
             )}
           </Box>
@@ -715,15 +729,15 @@ export default function BestMoveTrainer() {
         </Box>
 
         {/* ── Right column ── */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, width: { xs: '100%', md: 'auto' } }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: { xs: 1, md: 2 }, minWidth: 0, width: { xs: '100%', md: 'auto' } }}>
 
           {/* Feedback card */}
           <AnimatePresence mode="wait">
             {status === 'loading' ? (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: 3, borderRadius: '16px', background: T.cardBg, border: `1px solid ${T.cardBorder}` }}>
+                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.cardBg, border: `1px solid ${T.cardBorder}` }}>
                   <Typography variant="body1" sx={{ color: T.textTertiary, fontWeight: 600 }}>Analyzing position…</Typography>
-                  <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, opacity: 0.7 }}>
+                  <Typography variant="body2" sx={{ color: T.textTertiary, mt: 0.5, opacity: 0.7, display: { xs: 'none', sm: 'block' } }}>
                     {mode === 'practice' ? 'Loading your hardest position' : 'Fetching a real game from Lichess'}
                   </Typography>
                 </Box>
@@ -731,11 +745,11 @@ export default function BestMoveTrainer() {
 
             ) : status === 'correct' ? (
               <motion.div key="correct" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: 3, borderRadius: '16px', background: T.correctBg, border: `1px solid ${T.correctBorder}` }}>
+                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.correctBg, border: `1px solid ${T.correctBorder}` }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <CheckCircleIcon sx={{ color: isDark ? '#22C55E' : '#16A34A', fontSize: 26 }} />
-                    <Typography variant="h6" sx={{ color: T.correctTitle, fontWeight: 700 }}>
-                      {wrongAttempts > 0 ? `Found it! (${wrongAttempts} wrong attempt${wrongAttempts > 1 ? 's' : ''})` : hintUsed ? 'Correct (hint used)' : 'Best move! ✓'}
+                    <CheckCircleIcon sx={{ color: isDark ? '#22C55E' : '#16A34A', fontSize: { xs: 20, md: 26 } }} />
+                    <Typography variant="h6" sx={{ color: T.correctTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>
+                      {wrongAttempts > 0 ? `Found it! (${wrongAttempts} wrong)` : hintUsed ? 'Correct (hint used)' : 'Best move! ✓'}
                     </Typography>
                   </Box>
                   <Typography variant="body2" sx={{ color: T.correctSub, mb: 2 }}>
@@ -748,13 +762,13 @@ export default function BestMoveTrainer() {
 
             ) : status === 'revealed' ? (
               <motion.div key="revealed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Box sx={{ p: 3, borderRadius: '16px', background: T.wrongBg, border: `1px solid ${T.wrongBorder}` }}>
+                <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: '16px', background: T.wrongBg, border: `1px solid ${T.wrongBorder}` }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <LightbulbIcon sx={{ color: isDark ? '#EF4444' : '#DC2626', fontSize: 26 }} />
-                    <Typography variant="h6" sx={{ color: T.wrongTitle, fontWeight: 700 }}>Answer Revealed</Typography>
+                    <LightbulbIcon sx={{ color: isDark ? '#EF4444' : '#DC2626', fontSize: { xs: 20, md: 26 } }} />
+                    <Typography variant="h6" sx={{ color: T.wrongTitle, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>Answer Revealed</Typography>
                   </Box>
                   <Typography variant="body2" sx={{ color: T.wrongSub, mb: 2 }}>
-                    Best move: <strong>{feedback?.best}</strong> (shown by arrow). Position saved to practice list.
+                    Best move: <strong>{feedback?.best}</strong>. Saved to practice.
                   </Typography>
                   <ExplanationBox status={explainingStatus} explanation={explanation} T={T} isDark={isDark} THEME_COLOR={THEME_COLOR} onAskAI={handleAskAI} />
                   <NextBtn onClick={() => loadNewPosition(mode)} />
@@ -767,10 +781,10 @@ export default function BestMoveTrainer() {
                 <AnimatePresence mode="wait">
                   {feedback?.type === 'retry' ? (
                     <motion.div key="retry" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                      <Box sx={{ p: 3, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
+                      <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-                          <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: 24 }} />
-                          <Typography variant="h6" sx={{ color: T.retryTitle, fontWeight: 700 }}>
+                          <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: { xs: 18, md: 24 } }} />
+                          <Typography variant="h6" sx={{ color: T.retryTitle, fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
                             Not quite — keep trying!
                           </Typography>
                         </Box>
@@ -781,7 +795,7 @@ export default function BestMoveTrainer() {
                     </motion.div>
                   ) : (
                     <motion.div key="prompt" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                      <Box sx={{ p: 3, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                      <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                         <Typography variant="body1" sx={{ color: T.playTitle, fontWeight: 600, mb: 0.5 }}>
                           {mode === 'practice' && posStats
                             ? `Practice — ${posStats.fails}✗ / ${posStats.successes}✓`
@@ -801,8 +815,8 @@ export default function BestMoveTrainer() {
 
           <Divider sx={{ borderColor: T.divider }} />
 
-          {/* Stat cards */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+          {/* Stat cards — always visible on desktop, behind toggle on mobile */}
+          <Box sx={{ display: { xs: showStats ? 'grid' : 'none', md: 'grid' }, gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
             <StatCard label="Today's accuracy" value={`${todayAcc}%`} sub={`${todayStats.correct}/${todayStats.attempts}`} color="#22C55E" dark={isDark} />
             <StatCard label="All-time accuracy" value={`${accuracy}%`} sub={`${stats.totalCorrect}/${stats.totalAttempts}`} color={THEME_COLOR} dark={isDark} />
             <StatCard label="Current streak" value={stats.streak} sub="in a row" color="#F59E0B" dark={isDark} />
