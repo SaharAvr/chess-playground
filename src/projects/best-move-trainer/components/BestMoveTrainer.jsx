@@ -303,7 +303,7 @@ export default function BestMoveTrainer() {
   const [boardWidth, setBoardWidth] = useState(440);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [pvIndex, setPvIndex] = useState(-1);
-  const [engineMode, setEngineMode] = useState(() => localStorage.getItem('best_move_engine_mode') || 'local');
+  const [engineMode, setEngineMode] = useState(() => localStorage.getItem('best_move_engine_mode') || 'dual');
 
   useEffect(() => {
     localStorage.setItem('best_move_engine_mode', engineMode);
@@ -881,6 +881,52 @@ export default function BestMoveTrainer() {
     </Box>
   );
 
+  const renderHintContent = () => {
+    if (!aiHint && !hintLoading) return null;
+    return (
+      <Box sx={{ mt: 2, pt: 2, borderTop: isDark ? '1px solid rgba(251,191,36,0.15)' : '1px solid rgba(217,119,6,0.1)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <LightbulbIcon sx={{ color: '#D97706', fontSize: 16 }} />
+            <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+              Coach Clue
+            </Typography>
+          </Box>
+          {aiHint && !hintLoading && (
+            <Tooltip title="Get another hint">
+              <IconButton 
+                size="small" 
+                onClick={(e) => { e.stopPropagation(); showHint(true); }}
+                sx={{ color: '#D97706', p: 0.5, '&:hover': { background: 'rgba(217,119,6,0.1)' } }}
+              >
+                <RefreshIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+
+        {hintLoading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.5 }}>
+            <CircularProgress size={14} thickness={5} sx={{ color: '#D97706' }} />
+            <Typography variant="body2" sx={{ color: isDark ? '#FCD34D' : '#92400E', fontStyle: 'italic', fontWeight: 500, fontSize: '0.8rem' }}>
+              {aiHint ? "Coach is thinking of a better clue…" : "Coach is thinking of a clue…"}
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="body2" sx={{ 
+            color: isDark ? '#FCD34D' : '#78350F', 
+            fontStyle: 'italic', 
+            fontSize: '0.85rem',
+            lineHeight: 1.5,
+            fontWeight: 500
+          }}>
+            "{aiHint}"
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ 
@@ -1067,6 +1113,7 @@ export default function BestMoveTrainer() {
                                 Show Solution
                               </Button>
                             </Box>
+                            {renderHintContent()}
                           </Box>
                         </motion.div>
                       ) : (
@@ -1101,72 +1148,7 @@ export default function BestMoveTrainer() {
                              >
                                Reveal Solution
                              </Button>
-                          </Box>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* AI Hint display - shown below prompt OR retry when hint is requested */}
-                    <AnimatePresence>
-                      {(hintLoading || aiHint) && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                          style={{ marginTop: 16 }}
-                        >
-                          <Box sx={{
-                            p: { xs: 1.5, md: 2.5 },
-                            borderRadius: '16px',
-                            background: isDark ? 'rgba(251,191,36,0.08)' : '#fffbeb',
-                            border: `1px solid ${isDark ? 'rgba(251,191,36,0.25)' : '#fde68a'}`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 1.5,
-                            boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 10px rgba(217,119,6,0.05)'
-                          }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <LightbulbIcon sx={{ color: '#D97706', fontSize: 20 }} />
-                                <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.7rem' }}>
-                                  Coach Clue
-                                </Typography>
-                              </Box>
-                              {aiHint && !hintLoading && (
-                                <Tooltip title="Get another hint">
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={() => showHint(true)}
-                                    sx={{ 
-                                      color: '#D97706', 
-                                      p: 0.5,
-                                      '&:hover': { background: 'rgba(217,119,6,0.1)' } 
-                                    }}
-                                  >
-                                    <RefreshIcon sx={{ fontSize: 16 }} />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                            </Box>
-
-                            {hintLoading ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
-                                <CircularProgress size={16} thickness={5} sx={{ color: '#D97706' }} />
-                                <Typography variant="body2" sx={{ color: isDark ? '#FCD34D' : '#92400E', fontStyle: 'italic', fontWeight: 500 }}>
-                                  Coach is thinking of a better clue…
-                                </Typography>
-                              </Box>
-                            ) : (
-                              <Typography variant="body2" sx={{ 
-                                color: isDark ? '#FCD34D' : '#78350F', 
-                                fontStyle: 'italic', 
-                                fontSize: { xs: '0.875rem', md: '0.95rem' },
-                                lineHeight: 1.5,
-                                fontWeight: 500
-                              }}>
-                                "{aiHint}"
-                              </Typography>
-                            )}
+                            {renderHintContent()}
                           </Box>
                         </motion.div>
                       )}
