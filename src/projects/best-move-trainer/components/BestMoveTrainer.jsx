@@ -1080,6 +1080,27 @@ export default function BestMoveTrainer() {
                             <Typography variant="body2" sx={{ color: T.playSub }}>
                               {position?.orientation === 'white' ? 'White' : 'Black'} to play — find the move Stockfish considers best.
                             </Typography>
+                            <Button 
+                               onClick={revealAnswer} 
+                               size="small" 
+                               variant="text" 
+                               startIcon={<Visibility sx={{ fontSize: 14 }} />}
+                               sx={{ 
+                                 mt: 1,
+                                 color: T.textTertiary, 
+                                 textTransform: 'none',
+                                 fontSize: '0.7rem',
+                                 fontWeight: 500,
+                                 borderRadius: '6px',
+                                 p: '2px 8px',
+                                 '&:hover': {
+                                   color: '#DC2626',
+                                   background: 'rgba(220,38,38,0.05)',
+                                 }
+                               }}
+                             >
+                               Reveal Solution
+                             </Button>
                           </Box>
                         </motion.div>
                       )}
