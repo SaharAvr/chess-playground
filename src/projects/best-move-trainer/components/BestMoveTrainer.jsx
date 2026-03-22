@@ -866,7 +866,7 @@ export default function BestMoveTrainer() {
     <Box sx={{ display: displaySx, gap: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
       {[
         { label: 'Hint', icon: <LightbulbIcon sx={{ fontSize: 18 }} />, color: '#D97706', action: showHint, disabled: status !== 'playing' || hintUsed },
-        { label: 'Reveal', icon: <CancelIcon sx={{ fontSize: 18 }} />, color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
+        { label: 'Reveal', icon: <Visibility sx={{ fontSize: 18 }} />, color: '#DC2626', action: revealAnswer, disabled: status !== 'playing' },
         { label: 'Skip', icon: <SkipNextIcon sx={{ fontSize: 18 }} />, color: '#64748B', action: skipPosition, disabled: false },
         { label: 'New', icon: <RefreshIcon sx={{ fontSize: 18 }} />, color: THEME_COLOR, action: () => loadNewPosition(mode), disabled: false },
       ].map(({ label, icon, color, action, disabled }) => (
@@ -1041,9 +1041,32 @@ export default function BestMoveTrainer() {
                                 Not quite — keep trying!
                               </Typography>
                             </Box>
-                            <Typography variant="body2" sx={{ color: T.retrySub }}>
-                              Attempt #{feedback.attempts} · Use a hint if you're stuck.
-                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mt: 1.5 }}>
+                              <Typography variant="body2" sx={{ color: T.retrySub }}>
+                                Attempt #{feedback.attempts} · Stuck?
+                              </Typography>
+                              <Button 
+                                onClick={revealAnswer} 
+                                size="small" 
+                                variant="outlined" 
+                                startIcon={<Visibility sx={{ fontSize: 16 }} />}
+                                sx={{ 
+                                  color: isDark ? '#FCA5A5' : '#DC2626', 
+                                  borderColor: isDark ? 'rgba(252,165,165,0.3)' : 'rgba(220,38,38,0.3)',
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  borderRadius: '8px',
+                                  px: 1.5,
+                                  '&:hover': {
+                                    borderColor: isDark ? '#FCA5A5' : '#DC2626',
+                                    background: isDark ? 'rgba(252,165,165,0.05)' : 'rgba(220,38,38,0.03)',
+                                  }
+                                }}
+                              >
+                                Show Solution
+                              </Button>
+                            </Box>
                           </Box>
                         </motion.div>
                       ) : (
