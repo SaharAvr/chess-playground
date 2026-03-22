@@ -35,14 +35,14 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { analyzeLocal } from '../utils/stockfish';
 
 // ─── Gemini Hint ─────────────────────────────────────────────────────────────
-async function fetchHintClue(fen, bestMoveSan) {
+async function fetchHintClue(fen, bestMoveSan, excludeHint = '') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('gemini_api_key');
   if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.trim() === '') return null;
   try {
     const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       contents: [{
         role: 'user',
-        parts: [{ text: `You are an expert chess coach giving a HINT. The best move in this position (FEN: ${fen}) is "${bestMoveSan}". Give the player ONE short, cryptic tactical or strategic clue about WHY this move is best—without naming the move, the piece, or the destination square. For example: "Look for a way to attack two pieces at once" or "There is a way to force the opponent's king to move". Be brief (max 15 words), do not spoil the answer.` }]
+        parts: [{ text: `You are an expert chess coach giving a HINT. The best move in this position (FEN: ${fen}) is "${bestMoveSan}". Give the player ONE short, cryptic tactical or strategic clue about WHY this move is best—without naming the move, the piece, or the destination square. ${excludeHint ? `Do NOT repeat this previous hint: "${excludeHint}". Give a DIFFERENT strategic or tactical perspective.` : ''} Be brief (max 15 words), do not spoil the answer.` }]
       }]
     });
     return res.data.candidates[0].content.parts[0].text;
@@ -722,23 +722,24 @@ export default function BestMoveTrainer() {
   }, [game, fen]); // recompute when FEN updates
 
   // ── Hint ──────────────────────────────────────────────────────────────────
-  const showHint = useCallback(async () => {
+  const showHint = useCallback(async (refresh = false) => {
     if (!position || status !== 'playing') return;
-    setHintUsed(true); clearSelection();
+    if (!refresh) setHintUsed(true); 
+    clearSelection();
+    
     const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY;
     const hasApiKey = apiKey && apiKey !== 'your_gemini_api_key_here' && apiKey.trim() !== '';
+    
     if (hasApiKey) {
-      // AI hint: give a clue without revealing the move
       setHintLoading(true);
-      const clue = await fetchHintClue(position.fen, position.bestMoveSan);
+      const clue = await fetchHintClue(position.fen, position.bestMoveSan, refresh ? aiHint : '');
       setAiHint(clue || 'Think about forcing moves — checks, captures, and threats.');
       setHintLoading(false);
     } else {
-      // Fallback: show the arrow
       const best = position.topMoves[0];
       if (best) setArrows([[best.slice(0, 2), best.slice(2, 4), THEME_COLOR]]);
     }
-  }, [position, status, clearSelection]);
+  }, [position, status, clearSelection, aiHint]);
 
   // ── Reveal ────────────────────────────────────────────────────────────────
   const revealAnswer = useCallback(() => {
@@ -1057,43 +1058,72 @@ export default function BestMoveTrainer() {
                               {position?.orientation === 'white' ? 'White' : 'Black'} to play — find the move Stockfish considers best.
                             </Typography>
                           </Box>
-                          {/* AI Hint display - shown below prompt when hint is requested */}
-                          {(hintLoading || aiHint) && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              style={{ marginTop: 8 }}
-                            >
-                              <Box sx={{
-                                p: { xs: 1.5, md: 2 },
-                                borderRadius: '12px',
-                                background: isDark ? 'rgba(251,191,36,0.08)' : '#fffbeb',
-                                border: `1px solid ${isDark ? 'rgba(251,191,36,0.25)' : '#fde68a'}`,
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 1
-                              }}>
-                                <LightbulbIcon sx={{ color: '#D97706', fontSize: 18, mt: 0.2, flexShrink: 0 }} />
-                                {hintLoading ? (
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <CircularProgress size={14} sx={{ color: '#D97706' }} />
-                                    <Typography variant="body2" sx={{ color: isDark ? '#FCD34D' : '#92400E', fontStyle: 'italic' }}>
-                                      Getting a hint…
-                                    </Typography>
-                                  </Box>
-                                ) : (
-                                  <Box>
-                                    <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                      Coach says
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: isDark ? '#FCD34D' : '#78350F', fontStyle: 'italic', mt: 0.25 }}>
-                                      {aiHint}
-                                    </Typography>
-                                  </Box>
-                                )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* AI Hint display - shown below prompt OR retry when hint is requested */}
+                    <AnimatePresence>
+                      {(hintLoading || aiHint) && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                          style={{ marginTop: 16 }}
+                        >
+                          <Box sx={{
+                            p: { xs: 1.5, md: 2.5 },
+                            borderRadius: '16px',
+                            background: isDark ? 'rgba(251,191,36,0.08)' : '#fffbeb',
+                            border: `1px solid ${isDark ? 'rgba(251,191,36,0.25)' : '#fde68a'}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1.5,
+                            boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 10px rgba(217,119,6,0.05)'
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <LightbulbIcon sx={{ color: '#D97706', fontSize: 20 }} />
+                                <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.7rem' }}>
+                                  Coach Clue
+                                </Typography>
                               </Box>
-                            </motion.div>
-                          )}
+                              {aiHint && !hintLoading && (
+                                <Tooltip title="Get another hint">
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => showHint(true)}
+                                    sx={{ 
+                                      color: '#D97706', 
+                                      p: 0.5,
+                                      '&:hover': { background: 'rgba(217,119,6,0.1)' } 
+                                    }}
+                                  >
+                                    <RefreshIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+
+                            {hintLoading ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
+                                <CircularProgress size={16} thickness={5} sx={{ color: '#D97706' }} />
+                                <Typography variant="body2" sx={{ color: isDark ? '#FCD34D' : '#92400E', fontStyle: 'italic', fontWeight: 500 }}>
+                                  Coach is thinking of a better clue…
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" sx={{ 
+                                color: isDark ? '#FCD34D' : '#78350F', 
+                                fontStyle: 'italic', 
+                                fontSize: { xs: '0.875rem', md: '0.95rem' },
+                                lineHeight: 1.5,
+                                fontWeight: 500
+                              }}>
+                                "{aiHint}"
+                              </Typography>
+                            )}
+                          </Box>
                         </motion.div>
                       )}
                     </AnimatePresence>
