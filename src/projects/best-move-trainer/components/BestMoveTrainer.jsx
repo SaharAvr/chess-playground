@@ -1106,25 +1106,30 @@ export default function BestMoveTrainer() {
                                 Attempt #{feedback.attempts} · Stuck?
                               </Typography>
                               <Button 
-                                onClick={revealAnswer} 
+                                onClick={() => showHint()} 
+                                disabled={hintUsed}
                                 size="small" 
                                 variant="outlined" 
-                                startIcon={<Visibility sx={{ fontSize: 16 }} />}
+                                startIcon={<LightbulbIcon sx={{ fontSize: 16 }} />}
                                 sx={{ 
-                                  color: isDark ? '#FCA5A5' : '#DC2626', 
-                                  borderColor: isDark ? 'rgba(252,165,165,0.3)' : 'rgba(220,38,38,0.3)',
+                                  color: '#D97706', 
+                                  borderColor: 'rgba(217,119,6,0.3)',
                                   textTransform: 'none',
                                   fontSize: '0.75rem',
                                   fontWeight: 600,
                                   borderRadius: '8px',
                                   px: 1.5,
                                   '&:hover': {
-                                    borderColor: isDark ? '#FCA5A5' : '#DC2626',
-                                    background: isDark ? 'rgba(252,165,165,0.05)' : 'rgba(220,38,38,0.03)',
+                                    borderColor: '#D97706',
+                                    background: 'rgba(217,119,6,0.05)',
+                                  },
+                                  '&.Mui-disabled': {
+                                    color: 'rgba(217,119,6,0.3)',
+                                    borderColor: 'rgba(217,119,6,0.1)',
                                   }
                                 }}
                               >
-                                Show Solution
+                                {hintUsed ? 'Hint Shown' : 'Show Hint'}
                               </Button>
                             </Box>
                             {renderHintContent()}
