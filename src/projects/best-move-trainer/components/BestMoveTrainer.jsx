@@ -42,7 +42,7 @@ async function fetchHintClue(fen, bestMoveSan, excludeHint = '') {
     const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       contents: [{
         role: 'user',
-        parts: [{ text: `You are an expert chess coach giving a HINT. The best move in this position (FEN: ${fen}) is "${bestMoveSan}". Give the player ONE short, cryptic tactical or strategic clue about WHY this move is best—without naming the move, the piece, or the destination square. ${excludeHint ? `Do NOT repeat this previous hint: "${excludeHint}". Give a DIFFERENT strategic or tactical perspective.` : ''} Be brief (max 15 words), do not spoil the answer.` }]
+        parts: [{ text: `You are an expert chess coach giving a HINT. The best move in this position (FEN: ${fen}) is "${bestMoveSan}". Give the player ONE short, cryptic tactical or strategic clue about WHY this move is best—without naming the move, the piece, or the destination square. ${excludeHint ? `Do NOT repeat this previous hint: "${excludeHint}". Give a DIFFERENT perspective.` : ''} Use simple English (beginner level, no complex terminology). Be brief (max 15 words), do not spoil the answer.` }]
       }]
     });
     return res.data.candidates[0].content.parts[0].text;
@@ -61,7 +61,7 @@ async function fetchMoveExplanation(fen, bestMoveSan, pv = '') {
     const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       contents: [{
         role: 'user',
-        parts: [{ text: `You are an expert chess coach. Explain briefly and clearly (in 1 or 2 beginner-friendly sentences) why the move "${bestMoveSan}" is the best move in this chess position (FEN: ${fen}). ${pv ? `The expected continuation sequence is: ${pv}. ` : ''}Do not mention the FEN string in your response, just explain the strategy or tactics.` }]
+        parts: [{ text: `You are an expert chess coach. Explain briefly and clearly (in 1 or 2 beginner-friendly sentences) why the move "${bestMoveSan}" is the best move in this chess position (FEN: ${fen}). Use simple English and avoid complex professional terminology. ${pv ? `The expected continuation sequence is: ${pv}. ` : ''}Do not mention the FEN string in your response, just explain the strategy or tactics.` }]
       }]
     });
     return res.data.candidates[0].content.parts[0].text;
