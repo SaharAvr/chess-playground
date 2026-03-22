@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, IconButton, Tooltip, Chip,
   Divider, CircularProgress, Badge, Button,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert
+  TextField, Snackbar, Alert
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -30,11 +29,10 @@ import moveSound from '../../tactics-finder/sounds/move.mp3';
 import captureSound from '../../tactics-finder/sounds/capture.mp3';
 import StatsPanel from './StatsPanel';
 import SharedModal from './SharedModal';
-import { ToastProvider, useToast } from '../context/ToastContext';
-import CloseIcon from '@mui/icons-material/Close';
+import { useToast } from '../context/ToastContext';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { useTheme, useMediaQuery } from '@mui/material';
+import { analyzeLocal } from '../utils/stockfish';
 
 // ─── Gemini Hint ─────────────────────────────────────────────────────────────
 async function fetchHintClue(fen, bestMoveSan) {
@@ -134,18 +132,38 @@ const sortedFailures = failures =>
     .sort((a, b) => (a.successes / (a.fails + 1)) - (b.successes / (b.fails + 1)));
 
 // ─── Fetch position analysis ────────────────────────────────────────────────────
-async function fetchPositionAnalysis(fen, lichessGame = null) {
+async function fetchPositionAnalysis(fen, engineMode = 'local', lichessGame = null) {
   const g = new Chess(fen);
   if (g.isGameOver()) throw new Error('Position already over');
 
   const orientation = g.turn() === 'w' ? 'white' : 'black';
 
-  const analysis = await axios.post('https://chess-api.com/v1', { fen, depth: 14, variants: 3 });
-  if (analysis.data.error) throw new Error(analysis.data.text || 'Engine error');
+  let bestData;
+  try {
+    if (engineMode === 'api') {
+      bestData = await axios.post('https://chess-api.com/v1', { fen, depth: 14, variants: 3 })
+        .then(res => ({ ...res.data, source: 'api' }));
+    } else if (engineMode === 'local') {
+      bestData = await analyzeLocal(fen, 14);
+    } else {
+      // Race mode
+      const apiPromise = axios.post('https://chess-api.com/v1', { fen, depth: 14, variants: 3 })
+        .then(res => ({ ...res.data, source: 'api' }));
+      const localPromise = analyzeLocal(fen, 13);
+      bestData = await Promise.race([apiPromise, localPromise]);
+    }
+    
+    console.log(`🚀 Analysis source: ${bestData.source || 'api'}`);
+    if (bestData.error) throw new Error(bestData.text || 'Engine error');
+  } catch (err) {
+    console.warn("Analysis error, falling back to local...", err);
+    bestData = await analyzeLocal(fen, 12);
+  }
 
-  const topMoves = Array.isArray(analysis.data)
-    ? analysis.data.map(m => m.move).filter(Boolean)
-    : [analysis.data.move].filter(Boolean);
+  const topMoves = Array.isArray(bestData)
+    ? bestData.map(m => m.move).filter(Boolean)
+    : [bestData.move].filter(Boolean);
+  
   if (!topMoves.length) throw new Error('No moves from engine');
 
   let username = 'Shared Position';
@@ -155,42 +173,105 @@ async function fetchPositionAnalysis(fen, lichessGame = null) {
     username = `${white} vs ${black}`;
   }
 
-  const bestData = Array.isArray(analysis.data) ? analysis.data[0] : analysis.data;
+  // Convert UCI to SAN for local results if needed
+  let bestMoveSan = bestData.san || bestData.text;
+  if (!bestMoveSan && bestData.move) {
+    try {
+      const moveObj = g.move(bestData.move);
+      if (moveObj) {
+        bestMoveSan = moveObj.san;
+        g.undo(); // pull back for consistency
+      }
+    } catch (_) { 
+      bestMoveSan = bestData.move; 
+    }
+  }
+
   const pvRaw = bestData?.continuationArr || (bestData?.text?.includes(' ') ? bestData.text.split(' ') : [bestData?.text].filter(Boolean));
   const pv = pvRaw.join(' ');
 
   return {
     fen, orientation, topMoves,
-    bestMoveSan: bestData?.san || bestData?.text || topMoves[0],
+    bestMoveSan: bestMoveSan || topMoves[0],
     evalScore: bestData?.eval,
     username,
     pv
   };
 }
 
-// ─── Fetch normal position ────────────────────────────────────────────────────
-async function fetchRandomPosition() {
-  const puzzleRes = await axios.get('https://lichess.org/api/puzzle/next', {
-    headers: { Accept: 'application/json' },
-  });
-  const { game: lichessGame, puzzle } = puzzleRes.data;
+// ─── Fetch normal position (from a real game, NOT a puzzle) ──────────────────
+// Pool of Lichess usernames across a range of skill levels
+const PLAYER_POOL = [
+  // ── Top GMs ──────────────────────────────────────────────────────────────
+  'DrNykterstein', 'MagnusCarlsen', 'nihalsarin2004', 'Firouzja2003',
+  'Hikaru', 'alireza2003', 'DanielNaroditsky', 'lachesisQ',
+  'Zhigalko_Sergei', 'rpragchess', 'penguingim1', 'Andrew-tang',
+  // ── Strong IMs / FMs ─────────────────────────────────────────────────────
+  'oleksandr_bortnyk', 'joppie2', 'Lance5500', 'Rebel-1',
+  'Keaton_Kassa', 'chess-network', 'GothamChess',
+  // ── Club Players (1500–1800) ──────────────────────────────────────────────
+  'nanoballoon', 'Ondine56', 'chess_enjoyer_99', 'Patzer1971',
+  'TacticsKing', 'middlegame_maniac', 'e4e5forever', 'CaissaFan',
+  'Oncegood', 'PlacidoMingo', 'TheBishopPair', 'blunderbuss88',
+  // ── Beginners / Casual (1000–1400) ───────────────────────────────────────
+  'Rookie2024', 'letsplaychess99', 'PawnsAndDreams', 'Coffeehouseking',
+  'just_learning_chess', 'Tuesday_Blitz', 'chessaddict42', 'OpeningTrap',
+  // ── Misc active players ───────────────────────────────────────────────────
+  'chessbrahs', 'SimonWilliams1', 'kassa_korley', 'Eric_Rosen',
+  'JohnBartholomewChess', 'agadmator',
+];
 
-  const tokens = lichessGame.pgn
-    .replace(/\[.*?\]\s*/g, '').trim()
-    .split(/\s+/)
-    .filter(t => !t.match(/^(\d+\.+|1-0|0-1|1\/2-1\/2|\*)$/));
+async function fetchRandomPosition(engineMode = 'local') {
+  const maxRetries = 5;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const username = PLAYER_POOL[Math.floor(Math.random() * PLAYER_POOL.length)];
+      // Fetch up to 8 of their recent rated blitz or rapid games in ndjson format
+      const gamesRes = await axios.get(
+        `https://lichess.org/api/games/user/${username}?max=8&rated=true&perfType=blitz,rapid&clocks=false&evals=false&opening=false`,
+        { headers: { Accept: 'application/x-ndjson' }, responseType: 'text' }
+      );
 
-  const puzzlePly = Math.min(puzzle.initialPly + 1, tokens.length);
-  const minPly = Math.max(16, Math.floor(puzzlePly * 0.50));
-  const maxPly = Math.max(minPly + 2, Math.floor(puzzlePly * 0.90));
-  const targetPly = minPly + Math.floor(Math.random() * (maxPly - minPly));
+      // Parse newline-delimited JSON
+      const games = gamesRes.data
+        .trim()
+        .split('\n')
+        .map(line => { try { return JSON.parse(line); } catch { return null; } })
+        .filter(Boolean)
+        .filter(g => g.status !== 'aborted' && g.moves && g.moves.split(' ').length > 25);
 
-  const g = new Chess();
-  for (let i = 0; i < Math.min(targetPly, tokens.length); i++) {
-    try { g.move(tokens[i]); } catch (_) { break; }
+      if (!games.length) continue;
+
+      const game = games[Math.floor(Math.random() * games.length)];
+      const tokens = game.moves.split(' ').filter(t =>
+        !t.match(/^(\d+\.+|1-0|0-1|1\/2-1\/2|\*)$/)
+      );
+      if (tokens.length < 20) continue;
+
+      // Pick a random position between move 12 and move 40 (or 80% through, whichever is less)
+      const minPly = Math.min(24, Math.floor(tokens.length * 0.25)); // ~move 12
+      const maxPly = Math.min(80, Math.floor(tokens.length * 0.80)); // ~move 40 or 80%
+      if (maxPly <= minPly) continue;
+      const targetPly = minPly + Math.floor(Math.random() * (maxPly - minPly));
+
+      const g = new Chess();
+      for (let i = 0; i < targetPly; i++) {
+        try { g.move(tokens[i]); } catch (_) { break; }
+      }
+
+      if (g.isGameOver()) continue;
+
+      const white = game.players?.white?.user?.name || '?';
+      const black = game.players?.black?.user?.name || '?';
+      const lichessGameMeta = { players: [{ color: 'white', name: white }, { color: 'black', name: black }] };
+
+      return fetchPositionAnalysis(g.fen(), engineMode, lichessGameMeta);
+    } catch (err) {
+      console.warn(`fetchRandomPosition attempt ${attempt + 1} failed:`, err.message);
+      if (attempt === maxRetries - 1) throw err;
+    }
   }
-
-  return fetchPositionAnalysis(g.fen(), lichessGame);
+  throw new Error('Could not fetch a valid position after retries');
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -222,6 +303,11 @@ export default function BestMoveTrainer() {
   const [boardWidth, setBoardWidth] = useState(440);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [pvIndex, setPvIndex] = useState(-1);
+  const [engineMode, setEngineMode] = useState(() => localStorage.getItem('best_move_engine_mode') || 'local');
+
+  useEffect(() => {
+    localStorage.setItem('best_move_engine_mode', engineMode);
+  }, [engineMode]);
 
 
 
@@ -269,7 +355,7 @@ export default function BestMoveTrainer() {
     try {
       let p;
       if (urlFen) {
-        p = await fetchPositionAnalysis(urlFen);
+        p = await fetchPositionAnalysis(urlFen, engineMode);
       } else if (m === 'practice') {
         const fl = loadFailures();
         const sorted = sortedFailures(fl);
@@ -294,7 +380,7 @@ export default function BestMoveTrainer() {
           explanation: picked.explanation,
         };
       } else {
-        p = await fetchRandomPosition();
+        p = await fetchRandomPosition(engineMode);
       }
       setPosition(p);
       setGame(new Chess(p.fen));
@@ -307,7 +393,7 @@ export default function BestMoveTrainer() {
     } catch (err) {
       console.error(err);
       try {
-        const p = await fetchRandomPosition();
+        const p = await fetchRandomPosition(engineMode);
         setPosition(p); setGame(new Chess(p.fen)); setFen(p.fen); setStatus('playing');
 
         const baseUrl = window.location.origin + window.location.pathname;
@@ -347,15 +433,17 @@ export default function BestMoveTrainer() {
   // ── Toast/Settings ────────────────────────────────────────────────────────
   const showToast = useToast();
 
-  const handleSaveAPIKey = () => {
-    if (!apiKeyInput.trim()) {
-      showToast('Please enter a valid API key.', 'error');
-      return;
+  const handleSaveSettings = () => {
+    // API key is optional for board functionality but needed for AI explanations
+    if (apiKeyInput.trim()) {
+      localStorage.setItem('gemini_api_key', apiKeyInput);
+    } else {
+      localStorage.removeItem('gemini_api_key');
     }
-    localStorage.setItem('gemini_api_key', apiKeyInput);
+    
     setShowSettings(false);
     setExplainingStatus('idle');
-    showToast('API key saved perfectly! You can ask the coach now.', 'success');
+    showToast('Settings saved successfully!', 'success');
   };
 
   const handleResetStats = () => {
@@ -1092,6 +1180,37 @@ export default function BestMoveTrainer() {
             }}
           />
 
+          <Box sx={{ mt: 4, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <FlashOnIcon sx={{ color: THEME_COLOR, fontSize: 18 }} />
+              <Typography variant="body2" sx={{ fontWeight: 700, color: T.textPrimary, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>Engine Source</Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: T.textSecondary, mb: 2, fontSize: '0.8rem', lineHeight: 1.5 }}>
+              Choose how the app analyzes positions. Local Stockfish runs entirely on your device and is the fastest and most private option.
+            </Typography>
+            <TextField
+              select
+              fullWidth
+              value={engineMode}
+              onChange={(e) => setEngineMode(e.target.value)}
+              SelectProps={{ native: true }}
+              size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '10px',
+                  color: T.textPrimary,
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                  '& fieldset': { borderColor: T.iconBorder },
+                  '&:hover fieldset': { borderColor: THEME_COLOR },
+                }
+              }}
+            >
+              <option value="local">Local Stockfish Only (Recommended)</option>
+              <option value="api">Cloud API Only</option>
+              <option value="race">Dual Race (Fastest Wins)</option>
+            </TextField>
+          </Box>
+
           {/* Inline Buttons for better flow on mobile */}
           <Box sx={{ 
             display: 'flex', 
@@ -1102,7 +1221,7 @@ export default function BestMoveTrainer() {
             pb: 2
           }}>
             <Button 
-              onClick={handleSaveAPIKey} 
+              onClick={handleSaveSettings} 
               variant="contained" 
               fullWidth={true}
               sx={{ 
@@ -1115,7 +1234,7 @@ export default function BestMoveTrainer() {
                 order: { xs: 1, sm: 2 } 
               }}
             >
-              Save Key
+              Save Settings
             </Button>
             <Button 
               onClick={handleCloseSettings} 
