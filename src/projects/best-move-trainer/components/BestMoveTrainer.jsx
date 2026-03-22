@@ -425,7 +425,7 @@ export default function BestMoveTrainer() {
   useEffect(() => {
     const calcWidth = () => {
       if (window.innerWidth < 900) {
-        setBoardWidth(window.innerWidth - 32); 
+        setBoardWidth(window.innerWidth); 
       } else {
         // Desktop: fill available height to perfectly fit screen
         // We give 80px total vertical padding (40px top, 40px bottom)
@@ -811,7 +811,7 @@ export default function BestMoveTrainer() {
 
   // ── Render Helpers ───────────────────────────────────────────────────────
   const renderHeader = (displaySx) => (
-    <Box sx={{ display: displaySx, width: '100%', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1.5, md: 0 }, flexWrap: 'wrap', gap: 1, px: { xs: 1.5, md: 0 } }}>
+    <Box sx={{ display: displaySx, width: '100%', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1.5, md: 0 }, flexWrap: 'wrap', gap: 1, px: { xs: 2, md: 0 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
         <Box sx={{ width: { xs: 30, md: 36 }, height: { xs: 30, md: 36 }, borderRadius: '10px', background: `linear-gradient(135deg, ${THEME_COLOR}, #9F67FA)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 15px ${THEME_COLOR}30`, flexShrink: 0 }}>
           <EmojiEventsIcon sx={{ color: '#fff', fontSize: { xs: 16, md: 20 } }} />
@@ -862,16 +862,15 @@ export default function BestMoveTrainer() {
   );
 
   const renderMeta = (displaySx) => position && (
-    <Box sx={{ display: displaySx, justifyContent: 'space-between', alignItems: 'center', px: 0.5, gap: '16px' }}>
+    <Box sx={{ display: displaySx, width: '100%', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, md: 0.5 }, gap: '16px' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
         <Box sx={{ width: 10, height: 10, borderRadius: '50%', background: isDark ? '#1E293B' : '#e2e8f0', border: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}` }} />
         <Typography variant="body2" sx={{ color: T.textSecondary, fontWeight: 700, fontSize: { md: '0.85rem' } }}>
           {position.orientation === 'white' ? 'White' : 'Black'} to move
         </Typography>
       </Box>
-      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', minWidth: 0 }}>
+      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center' }}>
         {evalDisp && <Chip label={evalDisp} size="small" sx={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)', color: THEME_COLOR, fontWeight: 700, fontSize: '0.7rem', height: 20 }} />}
-        <Typography variant="caption" sx={{ color: T.textTertiary, fontSize: { xs: '0.65rem', md: '0.75rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{position.username}</Typography>
       </Box>
     </Box>
   );
@@ -898,11 +897,11 @@ export default function BestMoveTrainer() {
   const renderHintContent = () => {
     if (!aiHint && !hintLoading) return null;
     return (
-      <Box sx={{ mt: 2, pt: 2, borderTop: isDark ? '1px solid rgba(251,191,36,0.15)' : '1px solid rgba(217,119,6,0.1)' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+      <Box sx={{ mt: 1, pt: 1.5, borderTop: isDark ? '1px solid rgba(251,191,36,0.15)' : '1px solid rgba(217,119,6,0.1)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <LightbulbIcon sx={{ color: '#D97706', fontSize: 16 }} />
-            <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+            <LightbulbIcon sx={{ color: '#D97706', fontSize: 14 }} />
+            <Typography variant="caption" sx={{ color: '#D97706', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.6rem' }}>
               Coach Clue
             </Typography>
           </Box>
@@ -953,7 +952,7 @@ export default function BestMoveTrainer() {
         alignItems: 'center', 
         pt: { xs: `calc(18px + env(safe-area-inset-top, 0px))`, md: 0 }, 
         pb: { xs: `calc(16px + env(safe-area-inset-bottom, 0px))`, md: 0 }, 
-        px: { xs: `calc(12px + env(safe-area-inset-left, 0px))`, md: 4 },
+        px: { xs: 0, md: 4 },
       }}>
 
         {/* Mobile Top Header */}
@@ -981,7 +980,7 @@ export default function BestMoveTrainer() {
             {/* Core Board */}
             <Box sx={{ 
               width: boardWidth, 
-              borderRadius: '16px', 
+              borderRadius: { xs: 0, md: '16px' }, 
               boxShadow: T.boardShadow, 
               border: `1px solid ${T.boardBorder}`, 
               position: 'relative', 
@@ -1093,43 +1092,31 @@ export default function BestMoveTrainer() {
                   <motion.div key="playing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                     <AnimatePresence mode="wait">
                       {feedback?.type === 'retry' ? (
-                        <motion.div key="retry" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                          <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-                              <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: { xs: 18, md: 24 } }} />
-                              <Typography variant="h6" sx={{ color: T.retryTitle, fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
-                                Not quite — keep trying!
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mt: 1.5 }}>
-                              <Typography variant="body2" sx={{ color: T.retrySub }}>
-                                Attempt #{feedback.attempts} · Stuck?
-                              </Typography>
+                        <motion.div key="retry" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                          <Box sx={{ p: { xs: 1.5, md: 2 }, borderRadius: '16px', background: T.retryBg, border: `1px solid ${T.retryBorder}` }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CancelIcon sx={{ color: isDark ? '#FBBF24' : '#D97706', fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ color: T.retryTitle, fontWeight: 700 }}>
+                                  Not quite (Attempt #{feedback.attempts})
+                                </Typography>
+                              </Box>
                               <Button 
                                 onClick={() => showHint()} 
                                 disabled={hintUsed}
                                 size="small" 
-                                variant="outlined" 
-                                startIcon={<LightbulbIcon sx={{ fontSize: 16 }} />}
+                                variant="text" 
+                                startIcon={<LightbulbIcon sx={{ fontSize: 14 }} />}
                                 sx={{ 
                                   color: '#D97706', 
-                                  borderColor: 'rgba(217,119,6,0.3)',
                                   textTransform: 'none',
                                   fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  borderRadius: '8px',
-                                  px: 1.5,
-                                  '&:hover': {
-                                    borderColor: '#D97706',
-                                    background: 'rgba(217,119,6,0.05)',
-                                  },
-                                  '&.Mui-disabled': {
-                                    color: 'rgba(217,119,6,0.3)',
-                                    borderColor: 'rgba(217,119,6,0.1)',
-                                  }
+                                  fontWeight: 700,
+                                  p: '2px 8px',
+                                  '&.Mui-disabled': { color: 'rgba(217,119,6,0.3)' }
                                 }}
                               >
-                                {hintUsed ? 'Hint Shown' : 'Show Hint'}
+                                {hintUsed ? 'Hint Shown' : 'Need a hint?'}
                               </Button>
                             </Box>
                             {renderHintContent()}
@@ -1137,36 +1124,23 @@ export default function BestMoveTrainer() {
                         </motion.div>
                       ) : (
                         <motion.div key="prompt" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                          <Box sx={{ p: { xs: 1.5, md: 3 }, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                            <Typography variant="body1" sx={{ color: T.playTitle, fontWeight: 600, mb: 0.5 }}>
-                              {mode === 'practice' && posStats
-                                ? `Practice — ${posStats.fails}✗ / ${posStats.successes}✓`
-                                : 'Find the best move'}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: T.playSub }}>
-                              {position?.orientation === 'white' ? 'White' : 'Black'} to play — find the move Stockfish considers best.
-                            </Typography>
-                            <Button 
-                               onClick={revealAnswer} 
-                               size="small" 
-                               variant="text" 
-                               startIcon={<Visibility sx={{ fontSize: 14 }} />}
-                               sx={{ 
-                                 mt: 1,
-                                 color: T.textTertiary, 
-                                 textTransform: 'none',
-                                 fontSize: '0.7rem',
-                                 fontWeight: 500,
-                                 borderRadius: '6px',
-                                 p: '2px 8px',
-                                 '&:hover': {
-                                   color: '#DC2626',
-                                   background: 'rgba(220,38,38,0.05)',
-                                 }
-                               }}
-                             >
-                               Reveal Solution
-                             </Button>
+                          <Box sx={{ p: { xs: 1.5, md: 2 }, borderRadius: '16px', background: T.playBg, border: `1px solid ${T.playBorder}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="subtitle1" sx={{ color: T.playTitle, fontWeight: 700 }}>
+                                {mode === 'practice' && posStats
+                                  ? `Practice — ${posStats.fails}✗ / ${posStats.successes}✓`
+                                  : 'Find the best move'}
+                              </Typography>
+                              <Button 
+                                 onClick={revealAnswer} 
+                                 size="small" 
+                                 variant="text" 
+                                 startIcon={<Visibility sx={{ fontSize: 14 }} />}
+                                 sx={{ color: T.textTertiary, textTransform: 'none', fontSize: '0.7rem', fontWeight: 500, p: '2px 8px', '&:hover': { color: '#DC2626', background: 'rgba(220,38,38,0.05)' } }}
+                               >
+                                 Reveal
+                               </Button>
+                            </Box>
                             {renderHintContent()}
                           </Box>
                         </motion.div>
